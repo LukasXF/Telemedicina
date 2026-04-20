@@ -26,7 +26,6 @@ export default function Login() {
     if (email === 'medico@telesaude.com') {
       navigate('/dashboard-medico')
     } else {
-      // PROCURA SE O PACIENTE JÁ TEM TRIAGEM
       const { data: triagem } = await supabase
         .from('triagens')
         .select('id')
@@ -35,15 +34,14 @@ export default function Login() {
         .single()
 
       if (triagem) {
-        navigate('/consulta') // Vai direto pra sala de espera
+        navigate('/consulta') 
       } else {
-        navigate('/triagem') // Vai preencher a primeira vez
+        navigate('/triagem') 
       }
     }
     setCarregando(false)
   }
 
-  // ... (o resto do código do formulário que você já tem)
   return (
     <div className="min-h-screen bg-[#0d1f1a] flex items-center justify-center px-6 py-10 font-sans">
       <div className="w-full max-w-sm animate-fadeUp">
