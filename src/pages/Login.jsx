@@ -1,4 +1,49 @@
+import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { supabase } from '../supabaseClient'
+
 export default function Login() {
+  const navigate = useNavigate()
+  const [email, setEmail] = useState('')
+  const [senha, setSenha] = useState('')
+  const [carregando, setCarregando] = useState(false)
+
+  const lidarComLogin = async (e) => {
+    e.preventDefault()
+    setCarregando(true)
+
+    const { data: { user }, error } = await supabase.auth.signInWithPassword({
+      email,
+      password: senha,
+    })
+
+    if (error) {
+      alert("Erro ao entrar: " + error.message)
+      setCarregando(false)
+      return
+    }
+
+    if (email === 'medico@telesaude.com') {
+      navigate('/dashboard-medico')
+    } else {
+      // PROCURA SE O PACIENTE JÁ TEM TRIAGEM
+      const { data: triagem } = await supabase
+        .from('triagens')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('status', 'pendente')
+        .single()
+
+      if (triagem) {
+        navigate('/consulta') // Vai direto pra sala de espera
+      } else {
+        navigate('/triagem') // Vai preencher a primeira vez
+      }
+    }
+    setCarregando(false)
+  }
+
+  // ... (o resto do código do formulário que você já tem)
   return (
     <div className="min-h-screen bg-[#0d1f1a] flex items-center justify-center px-6 py-10 font-sans">
       <div className="w-full max-w-sm animate-fadeUp">
@@ -9,30 +54,36 @@ export default function Login() {
               <path d="M8 12h8M12 8v8"/>
             </svg>
           </div>
-          <h1 className="text-[#e8f0ec] text-2xl font-semibold tracking-tight" style={{fontFamily:'Georgia, serif'}}>
-            TeleSaúde
-          </h1>
+          <h1 className="text-[#e8f0ec] text-2xl font-semibold tracking-tight" style={{fontFamily:'Georgia, serif'}}>TeleSaúde</h1>
           <p className="text-[#5a8a72] text-sm mt-1 font-light">Acesso remoto à saúde</p>
         </div>
-        <div className="bg-[#111f1a] border border-[#1e3b2e] rounded-2xl p-8">
+
+        <form onSubmit={lidarComLogin} className="bg-[#111f1a] border border-[#1e3b2e] rounded-2xl p-8 shadow-2xl">
           <h2 className="text-[#d4ebe0] text-xl mb-1" style={{fontFamily:'Georgia, serif'}}>Bem-vindo</h2>
           <p className="text-[#4a7a60] text-sm mb-7 font-light">Entre com sua conta para continuar</p>
+
           <div className="mb-4">
             <label className="block text-[#5a8a72] text-xs uppercase tracking-wider mb-2 font-medium">E-mail</label>
-            <input type="email" placeholder="seu@email.com" className="w-full bg-[#0d1f1a] border border-[#1e3b2e] rounded-xl px-4 py-3 text-[#c8e0d4] text-sm placeholder-[#2a4a3a] outline-none focus:border-[#2a9162] transition-colors" />
+            <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="seu@email.com" className="w-full bg-[#0d1f1a] border border-[#1e3b2e] rounded-xl px-4 py-3 text-[#c8e0d4] text-sm outline-none focus:border-[#2a9162]" />
           </div>
+
           <div className="mb-6">
             <label className="block text-[#5a8a72] text-xs uppercase tracking-wider mb-2 font-medium">Senha</label>
-            <input type="password" placeholder="••••••••" className="w-full bg-[#0d1f1a] border border-[#1e3b2e] rounded-xl px-4 py-3 text-[#c8e0d4] text-sm placeholder-[#2a4a3a] outline-none focus:border-[#2a9162] transition-colors" />
+            <input type="password" required value={senha} onChange={(e) => setSenha(e.target.value)} placeholder="••••••••" className="w-full bg-[#0d1f1a] border border-[#1e3b2e] rounded-xl px-4 py-3 text-[#c8e0d4] text-sm outline-none focus:border-[#2a9162]" />
           </div>
-          <button className="w-full bg-[#1e7a52] hover:bg-[#22905f] text-[#e8f5ee] py-3 rounded-xl text-sm font-medium transition-all">Entrar</button>
+
+          <button type="submit" disabled={carregando} className="w-full bg-[#1e7a52] hover:bg-[#22905f] text-[#e8f5ee] py-3 rounded-xl text-sm font-medium transition-all">
+            {carregando ? 'Verificando...' : 'Entrar'}
+          </button>
+
           <div className="flex items-center gap-3 my-5 text-[#2a4a3a] text-xs">
             <span className="flex-1 h-px bg-[#1a3330]"/>ou<span className="flex-1 h-px bg-[#1a3330]"/>
           </div>
+
           <p className="text-center text-[#4a7a60] text-sm">
             Não tem conta? <a href="/cadastro" className="text-[#4ab882] font-medium hover:underline">Cadastre-se</a>
           </p>
-        </div>
+        </form>
       </div>
     </div>
   )
