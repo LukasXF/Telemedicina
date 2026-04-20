@@ -5,35 +5,25 @@ import { supabase } from '../supabaseClient'
 export default function Triagem() {
   const navigate = useNavigate()
 
-  // Estados do formulário
   const [sintomasMarcados, setSintomasMarcados] = useState([])
   const [duracao, setDuracao] = useState('hoje')
   const [detalhes, setDetalhes] = useState('')
   const [enviando, setEnviando] = useState(false)
-  
-  // Estados para guardar quem está logado
   const [pacienteNome, setPacienteNome] = useState('Carregando nome...')
 
-  // Busca o nome do paciente assim que a tela abre
   useEffect(() => {
     const buscarUsuarioLogado = async () => {
-      // 1. Quem está logado?
       const { data: { user } } = await supabase.auth.getUser()
-      
       if (user) {
-        // 2. Pega o nome desse usuário na tabela de perfis
         const { data: perfil } = await supabase
           .from('perfis')
           .select('nome')
           .eq('id', user.id)
-          .single() // Pega um só
+          .single()
 
-        if (perfil) {
-          setPacienteNome(perfil.nome)
-        }
+        if (perfil) setPacienteNome(perfil.nome)
       }
     }
-    
     buscarUsuarioLogado()
   }, [])
 
@@ -59,22 +49,20 @@ export default function Triagem() {
     e.preventDefault()
     setEnviando(true)
 
-    // Pega o usuário logado para carimbar o ID na triagem
     const { data: { user } } = await supabase.auth.getUser()
     const prioridadeCalculada = calcularPrioridade()
 
-    // ENVIANDO PARA O BANCO COM O NOME REAL, USER ID e STATUS
     const { error } = await supabase
       .from('triagens')
       .insert([
         {
-          user_id: user.id, // VITAL: Agora o banco sabe de quem é a triagem!
+          user_id: user.id, // Vínculo vital para o Realtime funcionar
           paciente_nome: pacienteNome, 
           sintomas: sintomasMarcados,
           duracao: duracao,
           detalhes: detalhes,
           prioridade: prioridadeCalculada,
-          status: 'pendente' // VITAL: Define que está na fila de espera
+          status: 'pendente'
         }
       ])
 
@@ -90,17 +78,14 @@ export default function Triagem() {
   return (
     <div className="min-h-screen bg-[#0d1f1a] flex items-center justify-center px-6 py-10 font-sans">
       <div className="w-full max-w-md animate-fadeUp">
-        
         <div className="text-center mb-8">
           <h1 className="text-[#e8f0ec] text-2xl font-semibold tracking-tight" style={{fontFamily:'Georgia, serif'}}>
             Nova Triagem
           </h1>
-          {/* Mostrando o nome de quem está preenchendo */}
           <p className="text-[#4ab882] text-sm mt-1 font-medium">Paciente: {pacienteNome}</p>
         </div>
 
         <form onSubmit={lidarComEnvio} className="bg-[#111f1a] border border-[#1e3b2e] rounded-2xl p-8">
-          
           <div className="mb-6">
             <label className="block text-[#5a8a72] text-xs uppercase tracking-wider mb-3 font-medium">
               Sintomas Principais
@@ -155,7 +140,6 @@ export default function Triagem() {
           >
             {enviando ? 'Enviando pro Banco...' : 'Salvar e Enviar para o Médico'}
           </button>
-
         </form>
       </div>
     </div>

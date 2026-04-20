@@ -12,14 +12,13 @@ export default function DashboardMedico() {
     const { data, error } = await supabase
       .from('triagens')
       .select('*')
+      .eq('status', 'pendente') // Só mostra quem ainda não foi atendido
       .order('created_at', { ascending: false })
 
     if (error) {
       console.error("Erro ao buscar:", error)
     } else {
       const pacientesReais = data || []
-      
-      // O paciente fixo para a demonstração
       const silvioSantosFixo = {
         id: 'demo-silvio',
         paciente_nome: "Silvio Santos (Demonstração)",
@@ -27,7 +26,6 @@ export default function DashboardMedico() {
         prioridade: "BAIXA",
         isDemo: true
       }
-      
       setPacientes([silvioSantosFixo, ...pacientesReais])
     }
     setCarregando(false)
@@ -36,6 +34,25 @@ export default function DashboardMedico() {
   useEffect(() => {
     buscarTriagens()
   }, [])
+
+  // FUNÇÃO ATUALIZADA: Agora avisa o banco que o atendimento começou
+  const iniciarAtendimento = async (idTriagem) => {
+    if (idTriagem === 'demo-silvio') {
+      navigate('/consulta-medica')
+      return
+    }
+
+    const { error } = await supabase
+      .from('triagens')
+      .update({ status: 'em_atendimento' })
+      .eq('id', idTriagem)
+
+    if (error) {
+      alert("Erro ao iniciar atendimento: " + error.message)
+    } else {
+      navigate('/consulta-medica')
+    }
+  }
 
   const obterCorPrioridade = (p) => {
     if (p === 'ALTA') return 'bg-red-500'
@@ -86,7 +103,7 @@ export default function DashboardMedico() {
                   </td>
                   <td className="px-6 py-4">
                     <button 
-                      onClick={() => navigate('/consulta-medica')}
+                      onClick={() => iniciarAtendimento(p.id)}
                       className="bg-[#1e7a52] text-white text-xs px-4 py-2 rounded-lg opacity-80 group-hover:opacity-100 transition-all"
                     >
                       Atender

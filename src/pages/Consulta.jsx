@@ -1,35 +1,58 @@
-import { useState, useEffect } from 'react' // Adicionado o useEffect
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { supabase } from '../supabaseClient' // Importante: Precisamos do supabase aqui para buscar o nome
+import { supabase } from '../supabaseClient'
 import VideoCall from '../components/VideoCall'
 
 export default function Consulta() {
   const [chamadaAtiva, setChamadaAtiva] = useState(false)
-  
-  // NOVO: Estado para guardar o nome do usuário
   const [nomeUsuario, setNomeUsuario] = useState('')
-  
   const navigate = useNavigate()
+  
   const URL_SALA = 'https://telesaude.daily.co/Sala-atendimento'
 
-  // NOVO: Busca o nome assim que a página de Consulta abre
   useEffect(() => {
-    const pegarNome = async () => {
+    let canal;
+
+    const configurarRealtime = async () => {
+      // Pega o ID do usuário logado
       const { data: { user } } = await supabase.auth.getUser()
       
       if (user) {
-        const { data } = await supabase
+        // 1. Busca o nome para a chamada
+        const { data: perfil } = await supabase
           .from('perfis')
           .select('nome')
           .eq('id', user.id)
           .single()
-          
-        if (data) {
-          setNomeUsuario(data.nome)
-        }
+        
+        if (perfil) setNomeUsuario(perfil.nome)
+
+        // 2. REALTIME: Escuta se o status da triagem deste usuário muda para 'em_atendimento'
+        canal = supabase
+          .channel('mudanca_status')
+          .on('postgres_changes', 
+            { 
+              event: 'UPDATE', 
+              schema: 'public', 
+              table: 'triagens', 
+              filter: `user_id=eq.${user.id}` 
+            }, 
+            (payload) => {
+              if (payload.new.status === 'em_atendimento') {
+                setChamadaAtiva(true)
+              }
+            }
+          )
+          .subscribe()
       }
     }
-    pegarNome()
+
+    configurarRealtime()
+
+    // Limpa o canal quando sair da tela
+    return () => { 
+      if (canal) supabase.removeChannel(canal) 
+    }
   }, [])
 
   return (
@@ -44,18 +67,14 @@ export default function Consulta() {
               </svg>
             </div>
           </div>
-          <h1 className="text-[#e8f0ec] text-2xl font-semibold mb-2" style={{fontFamily:'Georgia, serif'}}>Sala de Espera Virtual</h1>
+          <h1 className="text-[#e8f0ec] text-2xl font-semibold mb-2" style={{fontFamily:'Georgia, serif'}}>
+            Olá, {nomeUsuario || 'Paciente'}
+          </h1>
           <p className="text-[#5a8a72] text-sm mb-8 leading-relaxed">
-            Sua triagem foi enviada. O médico iniciará a chamada em instantes.
+            Sua triagem foi enviada. Aguarde nesta tela, o médico iniciará a chamada em instantes.
           </p>
           
           <div className="flex flex-col gap-3">
-            <button 
-              onClick={() => setChamadaAtiva(true)}
-              className="w-full bg-[#1e7a52] hover:bg-[#22905f] text-[#e8f5ee] py-3.5 rounded-xl text-sm font-medium transition-all shadow-lg"
-            >
-              Entrar na Chamada (Simular Aceite)
-            </button>
             <button 
               onClick={() => navigate('/triagem')}
               className="w-full border border-[#2a6b52] text-[#4ab882] py-3.5 rounded-xl text-sm font-medium hover:bg-[#1a3d30] transition-all"
@@ -67,7 +86,6 @@ export default function Consulta() {
       ) : (
         <div className="w-full max-w-4xl h-[80vh] flex flex-col animate-fadeUp">
           <div className="flex-1 w-full h-full relative">
-            {/* ATUALIZADO: Passando o userName para o componente da chamada */}
             <VideoCall url={URL_SALA} userName={nomeUsuario} />
           </div>
           <button onClick={() => setChamadaAtiva(false)} className="mt-6 text-[#5a8a72] hover:text-white underline text-sm">
