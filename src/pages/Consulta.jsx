@@ -1,12 +1,36 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react' // Adicionado o useEffect
 import { useNavigate } from 'react-router-dom'
+import { supabase } from '../supabaseClient' // Importante: Precisamos do supabase aqui para buscar o nome
 import VideoCall from '../components/VideoCall'
 
 export default function Consulta() {
   const [chamadaAtiva, setChamadaAtiva] = useState(false)
-  const navigate = useNavigate()
   
+  // NOVO: Estado para guardar o nome do usuário
+  const [nomeUsuario, setNomeUsuario] = useState('')
+  
+  const navigate = useNavigate()
   const URL_SALA = 'https://telesaude.daily.co/Sala-atendimento'
+
+  // NOVO: Busca o nome assim que a página de Consulta abre
+  useEffect(() => {
+    const pegarNome = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      
+      if (user) {
+        const { data } = await supabase
+          .from('perfis')
+          .select('nome')
+          .eq('id', user.id)
+          .single()
+          
+        if (data) {
+          setNomeUsuario(data.nome)
+        }
+      }
+    }
+    pegarNome()
+  }, [])
 
   return (
     <div className="min-h-screen bg-[#0d1f1a] flex flex-col items-center justify-center px-6 py-10 font-sans">
@@ -43,7 +67,8 @@ export default function Consulta() {
       ) : (
         <div className="w-full max-w-4xl h-[80vh] flex flex-col animate-fadeUp">
           <div className="flex-1 w-full h-full relative">
-            <VideoCall url={URL_SALA} />
+            {/* ATUALIZADO: Passando o userName para o componente da chamada */}
+            <VideoCall url={URL_SALA} userName={nomeUsuario} />
           </div>
           <button onClick={() => setChamadaAtiva(false)} className="mt-6 text-[#5a8a72] hover:text-white underline text-sm">
             Voltar para sala de espera

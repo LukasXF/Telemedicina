@@ -11,10 +11,10 @@ export default function Triagem() {
   const [detalhes, setDetalhes] = useState('')
   const [enviando, setEnviando] = useState(false)
   
-  // NOVO: Estados para guardar quem está logado
+  // Estados para guardar quem está logado
   const [pacienteNome, setPacienteNome] = useState('Carregando nome...')
 
-  // NOVO: Busca o nome do paciente assim que a tela abre
+  // Busca o nome do paciente assim que a tela abre
   useEffect(() => {
     const buscarUsuarioLogado = async () => {
       // 1. Quem está logado?
@@ -59,18 +59,22 @@ export default function Triagem() {
     e.preventDefault()
     setEnviando(true)
 
+    // Pega o usuário logado para carimbar o ID na triagem
+    const { data: { user } } = await supabase.auth.getUser()
     const prioridadeCalculada = calcularPrioridade()
 
-    // ENVIANDO PARA O BANCO COM O NOME REAL
+    // ENVIANDO PARA O BANCO COM O NOME REAL, USER ID e STATUS
     const { error } = await supabase
       .from('triagens')
       .insert([
         {
-          paciente_nome: pacienteNome, // Agora usa a variável com o nome do Elon Musk!
+          user_id: user.id, // VITAL: Agora o banco sabe de quem é a triagem!
+          paciente_nome: pacienteNome, 
           sintomas: sintomasMarcados,
           duracao: duracao,
           detalhes: detalhes,
-          prioridade: prioridadeCalculada
+          prioridade: prioridadeCalculada,
+          status: 'pendente' // VITAL: Define que está na fila de espera
         }
       ])
 
