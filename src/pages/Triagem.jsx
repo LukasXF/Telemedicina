@@ -5,44 +5,102 @@ import { supabase } from '../supabaseClient'
 export default function Triagem() {
   const navigate = useNavigate()
 
-  const [sintomasMarcados, setSintomasMarcados] = useState([])
-  const [duracao, setDuracao] = useState('hoje')
+  const [situacoesMarcadas, setSituacoesMarcadas] = useState([])
+  const [demandaPrincipal, setDemandaPrincipal] = useState('')
+  const [urgencia, setUrgencia] = useState('baixa')
+  const [telefone, setTelefone] = useState('')
+  const [endereco, setEndereco] = useState('')
+  const [cartaoSus, setCartaoSus] = useState('')
+  const [composicaoFamiliar, setComposicaoFamiliar] = useState('')
+  const [rendaFamiliar, setRendaFamiliar] = useState('')
   const [detalhes, setDetalhes] = useState('')
   const [enviando, setEnviando] = useState(false)
-  const [pacienteNome, setPacienteNome] = useState('Carregando nome...')
+  const [cidadaoNome, setCidadaoNome] = useState('Carregando nome...')
 
   useEffect(() => {
     const buscarUsuarioLogado = async () => {
       const { data: { user } } = await supabase.auth.getUser()
-      if (user) {
-        const { data: perfil } = await supabase
-          .from('perfis')
-          .select('nome')
-          .eq('id', user.id)
-          .single()
 
-        if (perfil) setPacienteNome(perfil.nome)
+      if (!user) {
+        navigate('/')
+        return
       }
-    }
-    buscarUsuarioLogado()
-  }, [])
 
-  const lidarComSintoma = (sintoma) => {
-    if (sintomasMarcados.includes(sintoma)) {
-      setSintomasMarcados(sintomasMarcados.filter(s => s !== sintoma))
+      const { data: perfil } = await supabase
+        .from('perfis')
+        .select('nome')
+        .eq('id', user.id)
+        .single()
+
+      if (perfil) setCidadaoNome(perfil.nome)
+    }
+
+    buscarUsuarioLogado()
+  }, [navigate])
+
+  const lidarComSituacao = (situacao) => {
+    if (situacoesMarcadas.includes(situacao)) {
+      setSituacoesMarcadas(situacoesMarcadas.filter(item => item !== situacao))
     } else {
-      setSintomasMarcados([...sintomasMarcados, sintoma])
+      setSituacoesMarcadas([...situacoesMarcadas, situacao])
     }
   }
 
+  const calcularPontuacaoRisco = () => {
+    let pontos = 0
+
+    if (demandaPrincipal === 'Violência ou ameaça') pontos += 50
+    if (demandaPrincipal === 'Falta de alimento') pontos += 40
+    if (demandaPrincipal === 'Moradia ou risco de despejo') pontos += 35
+    if (demandaPrincipal === 'Criança, adolescente, idoso ou PCD em risco') pontos += 35
+    if (demandaPrincipal === 'Benefícios sociais') pontos += 20
+    if (demandaPrincipal === 'Documentação') pontos += 10
+    if (demandaPrincipal === 'Orientação social') pontos += 5
+
+    if (situacoesMarcadas.includes('Há risco de violência doméstica ou familiar')) pontos += 50
+    if (situacoesMarcadas.includes('A família está sem alimento no momento')) pontos += 40
+    if (situacoesMarcadas.includes('Há criança ou adolescente em situação de risco')) pontos += 35
+    if (situacoesMarcadas.includes('Há idoso ou pessoa com deficiência em situação de risco')) pontos += 35
+    if (situacoesMarcadas.includes('A família está sem moradia ou em risco de despejo')) pontos += 35
+    if (situacoesMarcadas.includes('Há pessoa doente sem acompanhamento ou medicação')) pontos += 25
+    if (situacoesMarcadas.includes('A família está sem renda')) pontos += 20
+    if (situacoesMarcadas.includes('Precisa atualizar CadÚnico ou benefício social')) pontos += 10
+    if (situacoesMarcadas.includes('Precisa de orientação sobre documentação')) pontos += 5
+
+    if (urgencia === 'alta') pontos += 30
+    if (urgencia === 'media') pontos += 15
+
+    return pontos
+  }
+
   const calcularPrioridade = () => {
-    if (sintomasMarcados.includes('Dor no Peito') || sintomasMarcados.includes('Falta de Ar')) {
-      return 'ALTA'
-    }
-    if (sintomasMarcados.includes('Febre Alta') || sintomasMarcados.includes('Enjoo/Vômito')) {
-      return 'MÉDIA'
-    }
+    const pontos = calcularPontuacaoRisco()
+
+    if (pontos >= 70) return 'ALTA'
+    if (pontos >= 30) return 'MÉDIA'
     return 'BAIXA'
+  }
+
+  const montarResumoDoCaso = () => {
+    const pontuacao = calcularPontuacaoRisco()
+
+    return `
+Demanda principal: ${demandaPrincipal}
+Nível de urgência informado: ${urgencia}
+Pontuação de risco social: ${pontuacao}
+
+Telefone para contato: ${telefone || 'Não informado'}
+Endereço/bairro: ${endereco || 'Não informado'}
+Cartão SUS/NIS: ${cartaoSus || 'Não informado'}
+Composição familiar: ${composicaoFamiliar || 'Não informado'}
+Renda familiar aproximada: ${rendaFamiliar || 'Não informado'}
+
+Situações marcadas:
+${situacoesMarcadas.length > 0 ? situacoesMarcadas.map(item => `- ${item}`).join('\n') : '- Nenhuma situação específica marcada'}
+
+Descrição do cidadão:
+${detalhes || 'Não informado'}
+    `.trim()
   }
 
   const lidarComEnvio = async (e) => {
@@ -50,95 +108,242 @@ export default function Triagem() {
     setEnviando(true)
 
     const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) {
+      alert('Você precisa estar logado para enviar uma solicitação.')
+      setEnviando(false)
+      navigate('/')
+      return
+    }
+
+    const { data: solicitacaoExistente, error: erroBusca } = await supabase
+      .from('triagens')
+      .select('id, status')
+      .eq('user_id', user.id)
+      .in('status', ['pendente', 'em_atendimento'])
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    if (erroBusca) {
+      alert('Erro ao verificar solicitação existente: ' + erroBusca.message)
+      setEnviando(false)
+      return
+    }
+
+    if (solicitacaoExistente) {
+      alert('Você já possui uma solicitação em andamento. Vamos te levar para a fila de atendimento.')
+      setEnviando(false)
+      navigate('/consulta')
+      return
+    }
+
     const prioridadeCalculada = calcularPrioridade()
+    const resumoDoCaso = montarResumoDoCaso()
+
+    const dadosSociais = [
+      demandaPrincipal,
+      ...situacoesMarcadas,
+    ].filter(Boolean)
 
     const { error } = await supabase
       .from('triagens')
       .insert([
         {
-          user_id: user.id, // Vínculo vital para o Realtime funcionar
-          paciente_nome: pacienteNome, 
-          sintomas: sintomasMarcados,
-          duracao: duracao,
-          detalhes: detalhes,
+          user_id: user.id,
+          paciente_nome: cidadaoNome,
+          sintomas: dadosSociais,
+          duracao: urgencia,
+          detalhes: resumoDoCaso,
           prioridade: prioridadeCalculada,
-          status: 'pendente'
+          status: 'pendente',
         }
       ])
 
     setEnviando(false)
 
     if (error) {
-      alert("Erro ao enviar: " + error.message)
+      alert('Erro ao enviar solicitação: ' + error.message)
     } else {
-      navigate('/consulta') 
+      navigate('/consulta')
     }
   }
 
+  const situacoesSociais = [
+    'Há risco de violência doméstica ou familiar',
+    'A família está sem alimento no momento',
+    'Há criança ou adolescente em situação de risco',
+    'Há idoso ou pessoa com deficiência em situação de risco',
+    'A família está sem moradia ou em risco de despejo',
+    'Há pessoa doente sem acompanhamento ou medicação',
+    'A família está sem renda',
+    'Precisa atualizar CadÚnico ou benefício social',
+    'Precisa de orientação sobre documentação',
+  ]
+
   return (
     <div className="min-h-screen bg-[#0d1f1a] flex items-center justify-center px-6 py-10 font-sans">
-      <div className="w-full max-w-md animate-fadeUp">
+      <div className="w-full max-w-3xl animate-fadeUp">
         <div className="text-center mb-8">
           <h1 className="text-[#e8f0ec] text-2xl font-semibold tracking-tight" style={{fontFamily:'Georgia, serif'}}>
-            Nova Triagem
+            Acolhimento Social
           </h1>
-          <p className="text-[#4ab882] text-sm mt-1 font-medium">Paciente: {pacienteNome}</p>
+          <p className="text-[#4ab882] text-sm mt-1 font-medium">
+            Cidadão: {cidadaoNome}
+          </p>
+          <p className="text-[#5a8a72] text-sm mt-3 font-light max-w-2xl mx-auto">
+            Preencha as informações abaixo para que a equipe de assistência social possa entender a situação e organizar o atendimento.
+          </p>
         </div>
 
         <form onSubmit={lidarComEnvio} className="bg-[#111f1a] border border-[#1e3b2e] rounded-2xl p-8">
           <div className="mb-6">
-            <label className="block text-[#5a8a72] text-xs uppercase tracking-wider mb-3 font-medium">
-              Sintomas Principais
+            <label className="block text-[#5a8a72] text-xs uppercase tracking-wider mb-2 font-medium">
+              Demanda principal
             </label>
-            <div className="grid grid-cols-2 gap-3">
-              {['Febre Alta', 'Falta de Ar', 'Dor no Corpo', 'Tosse Contínua', 'Enjoo/Vômito', 'Dor no Peito'].map((sintoma) => (
-                <label key={sintoma} className="flex items-center gap-2 text-[#c8e0d4] text-sm cursor-pointer p-2 rounded-lg border border-[#1a3330] hover:bg-[#152b24] transition-colors">
-                  <input 
-                    type="checkbox" 
-                    className="accent-[#2a9162] w-4 h-4 cursor-pointer"
-                    onChange={() => lidarComSintoma(sintoma)}
-                  />
-                  {sintoma}
-                </label>
-              ))}
+            <select
+              required
+              value={demandaPrincipal}
+              onChange={(e) => setDemandaPrincipal(e.target.value)}
+              className="w-full bg-[#0d1f1a] border border-[#1e3b2e] rounded-xl px-4 py-3 text-[#c8e0d4] text-sm outline-none focus:border-[#2a9162] transition-colors"
+            >
+              <option value="">Selecione a principal necessidade</option>
+              <option value="Violência ou ameaça">Violência ou ameaça</option>
+              <option value="Falta de alimento">Falta de alimento</option>
+              <option value="Moradia ou risco de despejo">Moradia ou risco de despejo</option>
+              <option value="Criança, adolescente, idoso ou PCD em risco">Criança, adolescente, idoso ou PCD em risco</option>
+              <option value="Benefícios sociais">Benefícios sociais</option>
+              <option value="Documentação">Documentação</option>
+              <option value="Orientação social">Orientação social</option>
+            </select>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-4 mb-6">
+            <div>
+              <label className="block text-[#5a8a72] text-xs uppercase tracking-wider mb-2 font-medium">
+                Telefone para contato
+              </label>
+              <input
+                type="text"
+                value={telefone}
+                onChange={(e) => setTelefone(e.target.value)}
+                placeholder="(00) 00000-0000"
+                className="w-full bg-[#0d1f1a] border border-[#1e3b2e] rounded-xl px-4 py-3 text-[#c8e0d4] text-sm outline-none focus:border-[#2a9162]"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[#5a8a72] text-xs uppercase tracking-wider mb-2 font-medium">
+                Cartão SUS ou NIS
+              </label>
+              <input
+                type="text"
+                value={cartaoSus}
+                onChange={(e) => setCartaoSus(e.target.value)}
+                placeholder="Opcional neste protótipo"
+                className="w-full bg-[#0d1f1a] border border-[#1e3b2e] rounded-xl px-4 py-3 text-[#c8e0d4] text-sm outline-none focus:border-[#2a9162]"
+              />
             </div>
           </div>
 
           <div className="mb-6">
             <label className="block text-[#5a8a72] text-xs uppercase tracking-wider mb-2 font-medium">
-              Há quantos dias começaram?
+              Endereço ou bairro de referência
             </label>
-            <select 
-              value={duracao}
-              onChange={(e) => setDuracao(e.target.value)}
-              className="w-full bg-[#0d1f1a] border border-[#1e3b2e] rounded-xl px-4 py-3 text-[#c8e0d4] text-sm outline-none focus:border-[#2a9162] transition-colors appearance-none"
+            <input
+              type="text"
+              value={endereco}
+              onChange={(e) => setEndereco(e.target.value)}
+              placeholder="Ex: Rua, bairro, ponto de referência ou território do CRAS"
+              className="w-full bg-[#0d1f1a] border border-[#1e3b2e] rounded-xl px-4 py-3 text-[#c8e0d4] text-sm outline-none focus:border-[#2a9162]"
+            />
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-4 mb-6">
+            <div>
+              <label className="block text-[#5a8a72] text-xs uppercase tracking-wider mb-2 font-medium">
+                Composição familiar
+              </label>
+              <input
+                type="text"
+                value={composicaoFamiliar}
+                onChange={(e) => setComposicaoFamiliar(e.target.value)}
+                placeholder="Ex: 2 adultos e 3 crianças"
+                className="w-full bg-[#0d1f1a] border border-[#1e3b2e] rounded-xl px-4 py-3 text-[#c8e0d4] text-sm outline-none focus:border-[#2a9162]"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[#5a8a72] text-xs uppercase tracking-wider mb-2 font-medium">
+                Renda familiar aproximada
+              </label>
+              <input
+                type="text"
+                value={rendaFamiliar}
+                onChange={(e) => setRendaFamiliar(e.target.value)}
+                placeholder="Ex: Sem renda, até 1 salário mínimo..."
+                className="w-full bg-[#0d1f1a] border border-[#1e3b2e] rounded-xl px-4 py-3 text-[#c8e0d4] text-sm outline-none focus:border-[#2a9162]"
+              />
+            </div>
+          </div>
+
+          <div className="mb-6">
+            <label className="block text-[#5a8a72] text-xs uppercase tracking-wider mb-2 font-medium">
+              Urgência percebida
+            </label>
+            <select
+              value={urgencia}
+              onChange={(e) => setUrgencia(e.target.value)}
+              className="w-full bg-[#0d1f1a] border border-[#1e3b2e] rounded-xl px-4 py-3 text-[#c8e0d4] text-sm outline-none focus:border-[#2a9162] transition-colors"
             >
-              <option value="hoje">Começou hoje</option>
-              <option value="1 a 3 dias">1 a 3 dias</option>
-              <option value="4 a 7 dias">4 a 7 dias</option>
-              <option value="mais de uma semana">Mais de uma semana</option>
+              <option value="baixa">Baixa — posso aguardar atendimento</option>
+              <option value="media">Média — preciso de orientação em breve</option>
+              <option value="alta">Alta — existe risco ou necessidade urgente</option>
             </select>
+          </div>
+
+          <div className="mb-6">
+            <label className="block text-[#5a8a72] text-xs uppercase tracking-wider mb-3 font-medium">
+              Situações identificadas
+            </label>
+            <div className="grid md:grid-cols-2 gap-3">
+              {situacoesSociais.map((situacao) => (
+                <label
+                  key={situacao}
+                  className="flex items-start gap-2 text-[#c8e0d4] text-sm cursor-pointer p-3 rounded-lg border border-[#1a3330] hover:bg-[#152b24] transition-colors"
+                >
+                  <input
+                    type="checkbox"
+                    className="accent-[#2a9162] w-4 h-4 mt-0.5 cursor-pointer"
+                    checked={situacoesMarcadas.includes(situacao)}
+                    onChange={() => lidarComSituacao(situacao)}
+                  />
+                  <span>{situacao}</span>
+                </label>
+              ))}
+            </div>
           </div>
 
           <div className="mb-8">
             <label className="block text-[#5a8a72] text-xs uppercase tracking-wider mb-2 font-medium">
-              Detalhes Adicionais
+              Descrição da situação
             </label>
-            <textarea 
-              rows="3"
+            <textarea
+              rows="5"
+              required
               value={detalhes}
               onChange={(e) => setDetalhes(e.target.value)}
-              placeholder="Descreva como o paciente está se sentindo..."
+              placeholder="Conte, com suas palavras, o que está acontecendo e qual apoio você precisa neste momento."
               className="w-full bg-[#0d1f1a] border border-[#1e3b2e] rounded-xl px-4 py-3 text-[#c8e0d4] text-sm outline-none focus:border-[#2a9162] resize-none"
             ></textarea>
           </div>
 
-          <button 
-            type="submit" 
-            disabled={enviando || sintomasMarcados.length === 0}
+          <button
+            type="submit"
+            disabled={enviando || !demandaPrincipal || !detalhes}
             className="w-full bg-[#1e7a52] hover:bg-[#22905f] disabled:bg-[#1a3330] disabled:text-[#4a7a60] text-[#e8f5ee] py-3.5 rounded-xl text-sm font-medium transition-all shadow-lg"
           >
-            {enviando ? 'Enviando pro Banco...' : 'Salvar e Enviar para o Médico'}
+            {enviando ? 'Enviando solicitação...' : 'Enviar para Acolhimento Social'}
           </button>
         </form>
       </div>
