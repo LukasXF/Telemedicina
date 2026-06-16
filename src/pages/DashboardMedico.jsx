@@ -86,25 +86,9 @@ export default function DashboardMedico() {
     }
   }, [])
 
-  const iniciarAtendimento = async (caso) => {
-    if (caso.status === 'pendente' || caso.status === 'em_acompanhamento') {
-      const { error } = await supabase
-        .from('triagens')
-        .update({ status: 'em_atendimento' })
-        .eq('id', caso.id)
-
-      if (error) {
-        alert('Erro ao iniciar atendimento: ' + error.message)
-        return
-      }
-    }
-
-    navigate('/consulta-medica', {
-      state: { idTriagem: caso.id },
-    })
-  }
-
   const abrirCaso = (caso) => {
+    sessionStorage.setItem('elosocial_caso_atual', caso.id)
+
     navigate('/consulta-medica', {
       state: { idTriagem: caso.id },
     })
@@ -270,21 +254,12 @@ export default function DashboardMedico() {
                   </td>
 
                   <td className="px-6 py-4">
-                    {caso.status === 'em_acompanhamento' ? (
-                      <button
-                        onClick={() => abrirCaso(caso)}
-                        className="border border-[#2a6b52] text-[#4ab882] text-xs px-4 py-2 rounded-lg hover:bg-[#1a3d30] transition-all"
-                      >
-                        Abrir caso
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => iniciarAtendimento(caso)}
-                        className="bg-[#1e7a52] text-white text-xs px-4 py-2 rounded-lg opacity-80 group-hover:opacity-100 transition-all"
-                      >
-                        {caso.status === 'em_atendimento' ? 'Entrar no atendimento' : 'Iniciar atendimento'}
-                      </button>
-                    )}
+                    <button
+                      onClick={() => abrirCaso(caso)}
+                      className="bg-[#1e7a52] text-white text-xs px-4 py-2 rounded-lg opacity-80 group-hover:opacity-100 transition-all"
+                    >
+                      Abrir caso
+                    </button>
                   </td>
                 </tr>
               ))}
