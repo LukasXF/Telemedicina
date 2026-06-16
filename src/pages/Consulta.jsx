@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
 import VideoCall from '../components/VideoCall'
@@ -9,9 +9,9 @@ export default function Consulta() {
   const [chamadaAtiva, setChamadaAtiva] = useState(false)
   const [nomeUsuario, setNomeUsuario] = useState('')
   const [carregando, setCarregando] = useState(true)
+  const casoIdRef = useRef(null)
+  const statusRef = useRef(null)
 
-  // Mantemos a sala atual do Daily por enquanto para não quebrar a integração.
-  // Depois podemos trocar para uma sala individual por caso.
   const URL_SALA = 'https://telesaude.daily.co/Sala-atendimento'
 
   useEffect(() => {
@@ -35,6 +35,8 @@ export default function Consulta() {
 
       if (perfil?.nome) {
         setNomeUsuario(perfil.nome)
+      } else {
+        setNomeUsuario(user.email || 'Cidadão')
       }
 
       const { data: solicitacaoAtual, error: erroSolicitacao } = await supabase
@@ -57,16 +59,21 @@ export default function Consulta() {
         return
       }
 
-      if (solicitacaoAtual.status === 'em_atendimento') {
-        setChamadaAtiva(true)
-      }
+      casoIdRef.current = solicitacaoAtual.id
+      statusRef.current = solicitacaoAtual.status
 
-      if (
-        solicitacaoAtual.status === 'em_acompanhamento' ||
-        solicitacaoAtual.status === 'concluido'
-      ) {
+      if (solicitacaoAtual.status === 'concluido') {
         navigate('/acompanhamento')
         return
+      }
+
+      await supabase
+        .from('triagens')
+        .update({ aguardando_video: true })
+        .eq('id', solicitacaoAtual.id)
+
+      if (solicitacaoAtual.status === 'em_atendimento') {
+        setChamadaAtiva(true)
       }
 
       canal = supabase
@@ -80,6 +87,8 @@ export default function Consulta() {
             filter: `user_id=eq.${user.id}`,
           },
           (payload) => {
+            statusRef.current = payload.new.status
+
             if (payload.new.status === 'em_atendimento') {
               setChamadaAtiva(true)
             }
@@ -104,15 +113,34 @@ export default function Consulta() {
       if (canal) {
         supabase.removeChannel(canal)
       }
+
+      if (casoIdRef.current && statusRef.current !== 'em_atendimento') {
+        supabase
+          .from('triagens')
+          .update({ aguardando_video: false })
+          .eq('id', casoIdRef.current)
+          .then(() => {})
+      }
     }
   }, [navigate])
+
+  const voltarParaAcompanhamento = async () => {
+    if (casoIdRef.current) {
+      await supabase
+        .from('triagens')
+        .update({ aguardando_video: false })
+        .eq('id', casoIdRef.current)
+    }
+
+    navigate('/acompanhamento')
+  }
 
   if (carregando) {
     return (
       <div className="min-h-screen bg-[#0d1f1a] flex items-center justify-center px-6 py-10 font-sans">
         <div className="text-center animate-fadeUp">
           <div className="w-12 h-12 border-2 border-[#2a6b52] border-t-[#4ab882] rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-[#5a8a72] text-sm">Carregando sua solicitação...</p>
+          <p className="text-[#5a8a72] text-sm">Carregando sua sala de atendimento...</p>
         </div>
       </div>
     )
@@ -132,24 +160,25 @@ export default function Consulta() {
           </div>
 
           <h1 className="text-[#e8f0ec] text-2xl font-semibold mb-2" style={{fontFamily:'Georgia, serif'}}>
-            Olá, {nomeUsuario || 'Cidadão'}
+            Sala de espera
           </h1>
 
           <p className="text-[#5a8a72] text-sm mb-8 leading-relaxed">
-            Sua solicitação de acolhimento social está registrada. Quando um assistente social iniciar o atendimento por vídeo, a chamada será liberada automaticamente.
+            Olá, {nomeUsuario || 'cidadão'}. Você está aguardando o início da teleconferência.
+            Quando o assistente social iniciar a chamada, a sala será liberada automaticamente.
           </p>
 
           <div className="bg-[#111f1a] border border-[#1e3b2e] rounded-2xl p-5 text-left mb-6">
             <p className="text-[#d4ebe0] text-sm font-medium mb-2">
-              Atendimento por vídeo
+              Você está sinalizado como aguardando vídeo
             </p>
             <p className="text-[#5a8a72] text-sm leading-relaxed">
-              Esta tela é usada apenas para a teleconferência. Para mensagens, documentos e próximos passos, acesse seu acompanhamento.
+              A equipe poderá ver no painel que você entrou na sala de espera.
             </p>
           </div>
 
           <button
-            onClick={() => navigate('/acompanhamento')}
+            onClick={voltarParaAcompanhamento}
             className="w-full border border-[#2a6b52] text-[#4ab882] py-3.5 rounded-xl text-sm font-medium hover:bg-[#1a3d30] transition-all"
           >
             Voltar para Meu Acompanhamento
@@ -171,7 +200,7 @@ export default function Consulta() {
           </div>
 
           <button
-            onClick={() => navigate('/acompanhamento')}
+            onClick={voltarParaAcompanhamento}
             className="mt-6 text-[#5a8a72] hover:text-white underline text-sm"
           >
             Voltar para Meu Acompanhamento

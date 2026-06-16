@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { supabase } from '../supabaseClient' 
-import MensagensCaso from '../components/MensagensCaso'
+import { supabase } from '../supabaseClient'
 
 export default function Acompanhamento() {
   const navigate = useNavigate()
@@ -29,11 +28,7 @@ export default function Acompanhamento() {
         .eq('id', user.id)
         .maybeSingle()
 
-      if (perfil?.nome) {
-        setNomeUsuario(perfil.nome)
-      } else {
-        setNomeUsuario(user.email || 'Cidadão')
-      }
+      setNomeUsuario(perfil?.nome || user.email || 'Cidadão')
 
       const { data, error } = await supabase
         .from('triagens')
@@ -90,15 +85,6 @@ export default function Acompanhamento() {
     navigate('/')
   }
 
-  const entrarNaTeleconferencia = () => {
-    if (caso?.status === 'em_atendimento') {
-      navigate('/consulta')
-      return
-    }
-
-    alert('A teleconferência ainda não foi iniciada pela equipe de assistência social.')
-  }
-
   const obterTextoStatus = (status) => {
     if (status === 'pendente') return 'Aguardando acolhimento'
     if (status === 'em_atendimento') return 'Atendimento em andamento'
@@ -113,11 +99,11 @@ export default function Acompanhamento() {
     }
 
     if (status === 'em_atendimento') {
-      return 'Um assistente social iniciou seu atendimento. A teleconferência está disponível nos recursos abaixo.'
+      return 'Um assistente social iniciou seu atendimento. A teleconferência está disponível.'
     }
 
     if (status === 'em_acompanhamento') {
-      return 'Seu atendimento inicial foi realizado. Agora você pode acompanhar próximos passos, mensagens e documentos do caso.'
+      return 'Seu atendimento inicial foi realizado. Agora você pode acompanhar mensagens, próximos passos e documentos do caso.'
     }
 
     if (status === 'concluido') {
@@ -158,8 +144,6 @@ export default function Acompanhamento() {
     )
   }
 
-  const teleconferenciaDisponivel = caso?.status === 'em_atendimento'
-
   return (
     <div className="min-h-screen bg-[#0d1f1a] px-6 py-10 font-sans">
       <div className="max-w-6xl mx-auto animate-fadeUp">
@@ -199,23 +183,31 @@ export default function Acompanhamento() {
             </div>
           </div>
 
-          <p className="text-[#5a8a72] text-sm leading-relaxed mb-5">
+          <p className="text-[#5a8a72] text-sm leading-relaxed">
             {obterDescricaoStatus(caso?.status)}
           </p>
-
-          <button
-            onClick={() => navigate('/triagem?editar=1')}
-            className="border border-[#2a6b52] text-[#4ab882] px-4 py-3 rounded-xl text-sm font-medium hover:bg-[#1a3d30] transition-all"
-          >
-            Editar acolhimento
-          </button>
         </div>
 
-        <div className="grid lg:grid-cols-3 gap-6 mb-6">
+        <div className="grid lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 bg-[#111f1a] border border-[#1e3b2e] rounded-3xl p-6">
-            <h3 className="text-[#4ab882] text-xs font-bold uppercase tracking-widest mb-4">
-              Resumo do acolhimento
-            </h3>
+            <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-5">
+              <div>
+                <h3 className="text-[#4ab882] text-xs font-bold uppercase tracking-widest mb-2">
+                  Resumo do acolhimento
+                </h3>
+
+                <p className="text-[#5a8a72] text-sm">
+                  Informações principais registradas no seu acolhimento social.
+                </p>
+              </div>
+
+              <button
+                onClick={() => navigate('/triagem?editar=1')}
+                className="border border-[#2a6b52] text-[#4ab882] px-4 py-2 rounded-xl text-xs font-medium hover:bg-[#1a3d30] transition-all"
+              >
+                Editar acolhimento
+              </button>
+            </div>
 
             <div className="space-y-4">
               <div>
@@ -240,74 +232,61 @@ export default function Acompanhamento() {
                 <p className="text-[#5a8a72] text-xs uppercase tracking-wider mb-1">
                   Detalhes registrados
                 </p>
-                <pre className="text-[#c8e0d4] text-xs leading-relaxed whitespace-pre-wrap font-sans bg-[#0d1f1a] border border-[#1e3b2e] rounded-2xl p-4 max-h-80 overflow-y-auto">
+                <pre className="text-[#c8e0d4] text-xs leading-relaxed whitespace-pre-wrap font-sans bg-[#0d1f1a] border border-[#1e3b2e] rounded-2xl p-4 max-h-96 overflow-y-auto">
                   {caso?.detalhes || 'Nenhum detalhe informado.'}
                 </pre>
               </div>
             </div>
           </div>
 
-          <div className="bg-[#111f1a] border border-[#1e3b2e] rounded-3xl p-6">
+          <div className="bg-[#111f1a] border border-[#1e3b2e] rounded-3xl p-6 h-fit">
             <h3 className="text-[#4ab882] text-xs font-bold uppercase tracking-widest mb-4">
               Recursos do acompanhamento
             </h3>
 
             <div className="space-y-3">
               <button
-                onClick={entrarNaTeleconferencia}
-                className={`w-full text-left border rounded-2xl p-4 transition-all ${
-                  teleconferenciaDisponivel
-                    ? 'border-[#2a6b52] bg-[#123427] hover:bg-[#1a3d30]'
-                    : 'border-[#1e3b2e] bg-[#0d1f1a] opacity-70'
-                }`}
+                onClick={() => navigate('/consulta')}
+                className="w-full text-left border border-[#1e3b2e] rounded-2xl p-4 bg-[#0d1f1a] hover:border-[#2a6b52] transition-all"
               >
                 <p className="text-[#e8f0ec] text-sm font-medium">Teleconferência</p>
                 <p className="text-[#5a8a72] text-xs mt-1">
-                  {teleconferenciaDisponivel
-                    ? 'A chamada foi iniciada pela equipe. Clique para entrar.'
-                    : 'Será liberada quando o assistente social iniciar a chamada.'}
+                  Entre na sala de espera para atendimento por vídeo.
                 </p>
               </button>
 
               <button
-                onClick={() => navigate('/triagem?editar=1')}
+                onClick={() => navigate('/mensagens')}
                 className="w-full text-left border border-[#1e3b2e] rounded-2xl p-4 bg-[#0d1f1a] hover:border-[#2a6b52] transition-all"
               >
-                <p className="text-[#e8f0ec] text-sm font-medium">Editar acolhimento</p>
+                <p className="text-[#e8f0ec] text-sm font-medium">Mensagens</p>
                 <p className="text-[#5a8a72] text-xs mt-1">
-                  Atualize informações importantes do seu caso social.
+                  Converse com a equipe sobre o seu caso.
                 </p>
               </button>
 
-              <div className="border border-[#1e3b2e] rounded-2xl p-4 bg-[#0d1f1a] opacity-80">
-                <p className="text-[#e8f0ec] text-sm font-medium">Mensagens</p>
-                <p className="text-[#5a8a72] text-xs mt-1">
-                  Em desenvolvimento pela equipe.
-                </p>
-              </div>
-
-              <div className="border border-[#1e3b2e] rounded-2xl p-4 bg-[#0d1f1a] opacity-80">
+              <button
+                type="button"
+                className="w-full text-left border border-[#1e3b2e] rounded-2xl p-4 bg-[#0d1f1a] opacity-80"
+              >
                 <p className="text-[#e8f0ec] text-sm font-medium">Plano de ação</p>
                 <p className="text-[#5a8a72] text-xs mt-1">
                   Próximos passos e tarefas do acompanhamento.
                 </p>
-              </div>
+              </button>
 
-              <div className="border border-[#1e3b2e] rounded-2xl p-4 bg-[#0d1f1a] opacity-80">
+              <button
+                type="button"
+                className="w-full text-left border border-[#1e3b2e] rounded-2xl p-4 bg-[#0d1f1a] opacity-80"
+              >
                 <p className="text-[#e8f0ec] text-sm font-medium">Cofre digital</p>
                 <p className="text-[#5a8a72] text-xs mt-1">
                   Envio de documentos e comprovantes.
                 </p>
-              </div>
+              </button>
             </div>
           </div>
         </div>
-
-        <MensagensCaso
-          casoId={caso?.id}
-          remetenteTipo="cidadao"
-          remetenteNome={nomeUsuario || 'Cidadão'}
-        />
       </div>
     </div>
   )
