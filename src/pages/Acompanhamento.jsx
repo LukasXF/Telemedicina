@@ -8,72 +8,89 @@ export default function Acompanhamento() {
   const [caso, setCaso] = useState(null)
   const [nomeUsuario, setNomeUsuario] = useState('')
   const [carregando, setCarregando] = useState(true)
+  const [erro, setErro] = useState('')
 
   useEffect(() => {
     let canal
+    let componenteAtivo = true
 
     const buscarCaso = async () => {
-      setCarregando(true)
+      try {
+        setCarregando(true)
+        setErro('')
 
-      const { data: { user } } = await supabase.auth.getUser()
+        const { data: sessao, error: erroSessao } = await supabase.auth.getSession()
 
-      if (!user) {
-        navigate('/')
-        return
+        if (erroSessao) {
+          throw erroSessao
+        }
+
+        const user = sessao?.session?.user
+
+        if (!user) {
+          navigate('/')
+          return
+        }
+
+        const { data: perfil } = await supabase
+          .from('perfis')
+          .select('nome')
+          .eq('id', user.id)
+          .maybeSingle()
+
+        if (!componenteAtivo) return
+
+        setNomeUsuario(perfil?.nome || user.email || 'Cidadão')
+
+        const { data, error } = await supabase
+          .from('triagens')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+
+        if (error) {
+          throw error
+        }
+
+        if (!componenteAtivo) return
+
+        setCaso(data || null)
+
+        canal = supabase
+          .channel(`acompanhamento_${user.id}`)
+          .on(
+            'postgres_changes',
+            {
+              event: 'UPDATE',
+              schema: 'public',
+              table: 'triagens',
+              filter: `user_id=eq.${user.id}`,
+            },
+            (payload) => {
+              setCaso(payload.new)
+            }
+          )
+          .subscribe()
+      } catch (error) {
+        console.error('Erro ao carregar acompanhamento:', error)
+
+        if (componenteAtivo) {
+          setErro(error.message || 'Não foi possível carregar o acompanhamento.')
+        }
+      } finally {
+        if (componenteAtivo) {
+          setCarregando(false)
+        }
       }
-
-      const { data: perfil } = await supabase
-        .from('perfis')
-        .select('nome')
-        .eq('id', user.id)
-        .maybeSingle()
-
-      setNomeUsuario(perfil?.nome || user.email || 'Cidadão')
-
-      const { data, error } = await supabase
-        .from('triagens')
-        .select('*')
-        .eq('user_id', user.id)
-        .in('status', ['pendente', 'em_atendimento', 'em_acompanhamento', 'concluido'])
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle()
-
-      if (error) {
-        alert('Erro ao carregar acompanhamento: ' + error.message)
-        setCarregando(false)
-        return
-      }
-
-      if (!data) {
-        navigate('/triagem')
-        return
-      }
-
-      setCaso(data)
-
-      canal = supabase
-        .channel(`acompanhamento_${user.id}`)
-        .on(
-          'postgres_changes',
-          {
-            event: 'UPDATE',
-            schema: 'public',
-            table: 'triagens',
-            filter: `user_id=eq.${user.id}`,
-          },
-          (payload) => {
-            setCaso(payload.new)
-          }
-        )
-        .subscribe()
-
-      setCarregando(false)
     }
 
     buscarCaso()
 
     return () => {
+      componenteAtivo = false
+
       if (canal) {
         supabase.removeChannel(canal)
       }
@@ -139,6 +156,56 @@ export default function Acompanhamento() {
         <div className="text-center animate-fadeUp">
           <div className="w-12 h-12 border-2 border-[#2a6b52] border-t-[#4ab882] rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-[#5a8a72] text-sm">Carregando seu acompanhamento...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (erro) {
+    return (
+      <div className="min-h-screen bg-[#0d1f1a] flex items-center justify-center px-6 py-10 font-sans">
+        <div className="w-full max-w-md bg-[#111f1a] border border-[#1e3b2e] rounded-3xl p-8 text-center animate-fadeUp">
+          <h1 className="text-[#e8f0ec] text-xl font-semibold mb-3" style={{fontFamily:'Georgia, serif'}}>
+            Não foi possível carregar
+          </h1>
+
+          <p className="text-[#5a8a72] text-sm leading-relaxed mb-6">
+            {erro}
+          </p>
+
+          <button
+            onClick={() => window.location.reload()}
+            className="w-full bg-[#1e7a52] hover:bg-[#22905f] text-[#e8f5ee] py-3 rounded-xl text-sm font-medium transition-all"
+          >
+            Tentar novamente
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  if (!caso) {
+    return (
+      <div className="min-h-screen bg-[#0d1f1a] flex items-center justify-center px-6 py-10 font-sans">
+        <div className="w-full max-w-md bg-[#111f1a] border border-[#1e3b2e] rounded-3xl p-8 text-center animate-fadeUp">
+          <p className="text-[#4ab882] text-xs uppercase tracking-wider font-medium mb-2">
+            EloSocial
+          </p>
+
+          <h1 className="text-[#e8f0ec] text-xl font-semibold mb-3" style={{fontFamily:'Georgia, serif'}}>
+            Nenhum acompanhamento encontrado
+          </h1>
+
+          <p className="text-[#5a8a72] text-sm leading-relaxed mb-6">
+            Você ainda não possui um caso social registrado. Comece pelo acolhimento social.
+          </p>
+
+          <button
+            onClick={() => navigate('/triagem')}
+            className="w-full bg-[#1e7a52] hover:bg-[#22905f] text-[#e8f5ee] py-3 rounded-xl text-sm font-medium transition-all"
+          >
+            Iniciar acolhimento
+          </button>
         </div>
       </div>
     )
