@@ -10,6 +10,8 @@ export default function Acompanhamento() {
   const [carregando, setCarregando] = useState(true)
 
   useEffect(() => {
+    let canal
+
     const buscarCaso = async () => {
       setCarregando(true)
 
@@ -53,11 +55,48 @@ export default function Acompanhamento() {
       }
 
       setCaso(data)
+
+      canal = supabase
+        .channel(`acompanhamento_${user.id}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'triagens',
+            filter: `user_id=eq.${user.id}`,
+          },
+          (payload) => {
+            setCaso(payload.new)
+          }
+        )
+        .subscribe()
+
       setCarregando(false)
     }
 
     buscarCaso()
+
+    return () => {
+      if (canal) {
+        supabase.removeChannel(canal)
+      }
+    }
   }, [navigate])
+
+  const sair = async () => {
+    await supabase.auth.signOut()
+    navigate('/')
+  }
+
+  const entrarNaTeleconferencia = () => {
+    if (caso?.status === 'em_atendimento') {
+      navigate('/consulta')
+      return
+    }
+
+    alert('A teleconferência ainda não foi iniciada pela equipe de assistência social.')
+  }
 
   const obterTextoStatus = (status) => {
     if (status === 'pendente') return 'Aguardando acolhimento'
@@ -73,7 +112,7 @@ export default function Acompanhamento() {
     }
 
     if (status === 'em_atendimento') {
-      return 'Um assistente social iniciou seu atendimento. Entre na teleconferência quando estiver disponível.'
+      return 'Um assistente social iniciou seu atendimento. A teleconferência está disponível nos recursos abaixo.'
     }
 
     if (status === 'em_acompanhamento') {
@@ -118,6 +157,8 @@ export default function Acompanhamento() {
     )
   }
 
+  const teleconferenciaDisponivel = caso?.status === 'em_atendimento'
+
   return (
     <div className="min-h-screen bg-[#0d1f1a] px-6 py-10 font-sans">
       <div className="max-w-6xl mx-auto animate-fadeUp">
@@ -137,7 +178,7 @@ export default function Acompanhamento() {
           </div>
 
           <button
-            onClick={() => navigate('/')}
+            onClick={sair}
             className="bg-[#1a3d30] border border-[#2a6b52] px-4 py-2 rounded-xl text-[#4ab882] text-xs hover:bg-[#224d3d] transition-all"
           >
             Sair
@@ -161,21 +202,12 @@ export default function Acompanhamento() {
             {obterDescricaoStatus(caso?.status)}
           </p>
 
-          <div className="flex flex-col sm:flex-row gap-3">
-            <button
-              onClick={() => navigate('/consulta')}
-              className="bg-[#1e7a52] hover:bg-[#22905f] text-[#e8f5ee] px-4 py-3 rounded-xl text-sm font-medium transition-all"
-            >
-              Entrar na teleconferência
-            </button>
-
-            <button
-              onClick={() => navigate('/triagem?editar=1')}
-              className="border border-[#2a6b52] text-[#4ab882] px-4 py-3 rounded-xl text-sm font-medium hover:bg-[#1a3d30] transition-all"
-            >
-              Editar acolhimento
-            </button>
-          </div>
+          <button
+            onClick={() => navigate('/triagem?editar=1')}
+            className="border border-[#2a6b52] text-[#4ab882] px-4 py-3 rounded-xl text-sm font-medium hover:bg-[#1a3d30] transition-all"
+          >
+            Editar acolhimento
+          </button>
         </div>
 
         <div className="grid lg:grid-cols-3 gap-6 mb-6">
@@ -221,12 +253,18 @@ export default function Acompanhamento() {
 
             <div className="space-y-3">
               <button
-                onClick={() => navigate('/consulta')}
-                className="w-full text-left border border-[#1e3b2e] rounded-2xl p-4 bg-[#0d1f1a] hover:border-[#2a6b52] transition-all"
+                onClick={entrarNaTeleconferencia}
+                className={`w-full text-left border rounded-2xl p-4 transition-all ${
+                  teleconferenciaDisponivel
+                    ? 'border-[#2a6b52] bg-[#123427] hover:bg-[#1a3d30]'
+                    : 'border-[#1e3b2e] bg-[#0d1f1a] opacity-70'
+                }`}
               >
                 <p className="text-[#e8f0ec] text-sm font-medium">Teleconferência</p>
                 <p className="text-[#5a8a72] text-xs mt-1">
-                  Entre na sala de atendimento por vídeo quando o assistente iniciar.
+                  {teleconferenciaDisponivel
+                    ? 'A chamada foi iniciada pela equipe. Clique para entrar.'
+                    : 'Será liberada quando o assistente social iniciar a chamada.'}
                 </p>
               </button>
 
