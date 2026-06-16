@@ -1,25 +1,73 @@
-import { useEffect, useRef } from 'react';
-import DailyIframe from '@daily-co/daily-js';
+import { useEffect, useRef } from 'react'
+import DailyIframe from '@daily-co/daily-js'
 
-export default function VideoCall({ url, userName }) {
-  const videoRef = useRef(null);
+export default function VideoCall({ url, userName = 'Usuário' }) {
+  const containerRef = useRef(null)
+  const callFrameRef = useRef(null)
 
   useEffect(() => {
-    if (!videoRef.current || !url) return;
+    let cancelado = false
 
-    const callFrame = DailyIframe.createFrame(videoRef.current, {
-      iframeStyle: { width: '100%', height: '100%', border: 'none', borderRadius: '16px' },
-      showLeaveButton: true,
-    });
+    const iniciarChamada = async () => {
+      if (!containerRef.current || !url) return
 
-    // Aqui passamos o nome do usuário para o Daily.co
-    callFrame.join({ url: url, userName: userName || 'Usuário' });
+      try {
+        const instanciaExistente = DailyIframe.getCallInstance?.()
+
+        if (instanciaExistente) {
+          try {
+            await instanciaExistente.destroy()
+          } catch (erro) {
+            console.warn('Não foi possível destruir instância anterior do Daily:', erro)
+          }
+        }
+
+        if (cancelado || !containerRef.current) return
+
+        const callFrame = DailyIframe.createFrame(containerRef.current, {
+          iframeStyle: {
+            width: '100%',
+            height: '100%',
+            border: '0',
+            borderRadius: '16px',
+          },
+          showLeaveButton: true,
+          showFullscreenButton: true,
+        })
+
+        callFrameRef.current = callFrame
+
+        await callFrame.join({
+          url,
+          userName,
+        })
+      } catch (erro) {
+        console.error('Erro ao iniciar chamada Daily:', erro)
+      }
+    }
+
+    iniciarChamada()
 
     return () => {
-      callFrame.leave();
-      callFrame.destroy();
-    };
-  }, [url, userName]);
+      cancelado = true
 
-  return <div ref={videoRef} className="w-full h-full bg-black rounded-2xl overflow-hidden shadow-2xl border border-[#2a6b52]" />;
+      const callFrame = callFrameRef.current
+
+      if (callFrame) {
+        callFrameRef.current = null
+
+        try {
+          callFrame.destroy()
+        } catch (erro) {
+          console.warn('Erro ao destruir chamada Daily:', erro)
+        }
+      }
+    }
+  }, [url, userName])
+
+  return (
+    <div className="w-full h-full bg-black rounded-2xl overflow-hidden">
+      <div ref={containerRef} className="w-full h-full" />
+    </div>
+  )
 }
