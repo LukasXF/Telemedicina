@@ -186,6 +186,19 @@ export default function ConsultaMedico() {
     })
   }
 
+  const abrirPlanoAcao = () => {
+    if (!caso?.id || caso?.isDemo) {
+      alert('Plano de ação não está disponível para o caso demonstrativo.')
+      return
+    }
+
+    sessionStorage.setItem('elosocial_caso_atual', caso.id)
+
+    navigate('/plano-acao-assistente', {
+      state: { idTriagem: caso.id },
+    })
+  }
+
   const formatarSituacoes = (situacoes) => {
     if (Array.isArray(situacoes)) {
       return situacoes.join(', ')
@@ -405,7 +418,7 @@ export default function ConsultaMedico() {
 
               <button
                 type="button"
-                onClick={() => alert('Plano de ação será implementado na próxima etapa.')}
+                onClick={abrirPlanoAcao}
                 className="w-full text-left border border-[#1e3b2e] rounded-2xl p-4 bg-[#0d1f1a] hover:border-[#2a6b52] transition-all"
               >
                 <p className="text-[#e8f0ec] text-sm font-medium">Plano de ação</p>

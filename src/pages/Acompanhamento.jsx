@@ -333,8 +333,8 @@ export default function Acompanhamento() {
               </button>
 
               <button
-                type="button"
-                className="w-full text-left border border-[#1e3b2e] rounded-2xl p-4 bg-[#0d1f1a] opacity-80"
+                onClick={() => navigate('/plano-acao')}
+                className="w-full text-left border border-[#1e3b2e] rounded-2xl p-4 bg-[#0d1f1a] hover:border-[#2a6b52] transition-all"
               >
                 <p className="text-[#e8f0ec] text-sm font-medium">Plano de ação</p>
                 <p className="text-[#5a8a72] text-xs mt-1">

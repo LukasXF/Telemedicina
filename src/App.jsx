@@ -6,6 +6,8 @@ import Consulta from './pages/Consulta'
 import Acompanhamento from './pages/Acompanhamento'
 import Mensagens from './pages/Mensagens'
 import MensagensAssistente from './pages/MensagensAssistente'
+import PlanoAcao from './pages/PlanoAcao'
+import PlanoAcaoAssistente from './pages/PlanoAcaoAssistente'
 import DashboardMedico from './pages/DashboardMedico'
 import ConsultaMedico from './pages/ConsultaMedico'
 
@@ -20,6 +22,8 @@ export default function App() {
         <Route path="/acompanhamento" element={<Acompanhamento />} />
         <Route path="/mensagens" element={<Mensagens />} />
         <Route path="/mensagens-assistente" element={<MensagensAssistente />} />
+        <Route path="/plano-acao" element={<PlanoAcao />} />
+        <Route path="/plano-acao-assistente" element={<PlanoAcaoAssistente />} />
         <Route path="/dashboard-medico" element={<DashboardMedico />} />
         <Route path="/consulta-medica" element={<ConsultaMedico />} />
       </Routes>
