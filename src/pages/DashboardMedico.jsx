@@ -1,6 +1,11 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
+import { 
+  RefreshCw, LayoutDashboard, Video, Clock, 
+  Activity, ShieldCheck, User, AlertCircle, 
+  ArrowRight, VideoIcon, Inbox
+} from 'lucide-react'
 
 export default function DashboardMedico() {
   const navigate = useNavigate()
@@ -10,6 +15,7 @@ export default function DashboardMedico() {
 
   const statusAbertos = ['pendente', 'em_atendimento', 'em_acompanhamento']
 
+  // LÓGICA MANTIDA INTACTA
   const obterPesoPrioridade = (prioridade) => {
     if (prioridade === 'ALTA') return 3
     if (prioridade === 'MÉDIA') return 2
@@ -29,16 +35,12 @@ export default function DashboardMedico() {
       const statusB = obterPesoStatus(b)
       const statusA = obterPesoStatus(a)
 
-      if (statusB !== statusA) {
-        return statusB - statusA
-      }
+      if (statusB !== statusA) return statusB - statusA
 
       const prioridadeB = obterPesoPrioridade(b.prioridade)
       const prioridadeA = obterPesoPrioridade(a.prioridade)
 
-      if (prioridadeB !== prioridadeA) {
-        return prioridadeB - prioridadeA
-      }
+      if (prioridadeB !== prioridadeA) return prioridadeB - prioridadeA
 
       return new Date(a.created_at || 0) - new Date(b.created_at || 0)
     })
@@ -69,17 +71,9 @@ export default function DashboardMedico() {
 
     const canal = supabase
       .channel('painel_casos_sociais')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'triagens',
-        },
-        () => {
-          buscarCasos()
-        }
-      )
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'triagens' }, () => {
+        buscarCasos()
+      })
       .subscribe()
 
     return () => {
@@ -89,44 +83,33 @@ export default function DashboardMedico() {
 
   const abrirCaso = (caso) => {
     sessionStorage.setItem('elosocial_caso_atual', caso.id)
-
-    navigate('/consulta-medica', {
-      state: { idTriagem: caso.id },
-    })
+    navigate('/consulta-medica', { state: { idTriagem: caso.id } })
   }
 
+  // FUNÇÕES VISUAIS COM DESIGN SYSTEM ATUALIZADO
   const obterCorPrioridade = (prioridade) => {
-    if (prioridade === 'ALTA') return 'bg-red-500'
-    if (prioridade === 'MÉDIA') return 'bg-yellow-500'
-    return 'bg-green-500'
+    if (prioridade === 'ALTA') return 'bg-red-500/10 text-red-400 border-red-500/20'
+    if (prioridade === 'MÉDIA') return 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20'
+    return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
   }
 
-  const obterTextoStatus = (status) => {
-    if (status === 'pendente') return 'Pendente'
-    if (status === 'em_atendimento') return 'Em atendimento'
-    if (status === 'em_acompanhamento') return 'Em acompanhamento'
-    if (status === 'concluido') return 'Concluído'
-    return 'Não informado'
-  }
-
-  const obterCorStatus = (status) => {
-    if (status === 'pendente') return 'bg-yellow-500/20 text-yellow-300 border-yellow-600/40'
-    if (status === 'em_atendimento') return 'bg-blue-500/20 text-blue-300 border-blue-600/40'
-    if (status === 'em_acompanhamento') return 'bg-[#4ab882]/20 text-[#4ab882] border-[#2a6b52]'
-    return 'bg-gray-500/20 text-gray-300 border-gray-600/40'
-  }
-
-  const formatarSituacoes = (situacoes) => {
-    if (Array.isArray(situacoes)) {
-      return situacoes.join(', ')
+  const obterStatusBadge = (status) => {
+    const config = {
+      pendente: { texto: 'Pendente', cor: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20' },
+      em_atendimento: { texto: 'Em atendimento', cor: 'bg-blue-500/10 text-blue-400 border-blue-500/20' },
+      em_acompanhamento: { texto: 'Acompanhamento', cor: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' },
+      concluido: { texto: 'Concluído', cor: 'bg-slate-500/10 text-slate-400 border-slate-500/20' }
     }
-
-    if (situacoes) {
-      return situacoes
-    }
-
-    return 'Não informado'
+    const atual = config[status] || { texto: 'Não informado', cor: 'bg-slate-500/10 text-slate-400 border-slate-500/20' }
+    
+    return (
+      <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold border tracking-wide ${atual.cor}`}>
+        {atual.texto}
+      </span>
+    )
   }
+
+  const formatarSituacoes = (situacoes) => Array.isArray(situacoes) ? situacoes.join(', ') : situacoes || 'Não informado'
 
   const casosFiltrados = casos.filter((caso) => {
     if (filtroStatus === 'todos') return true
@@ -134,174 +117,168 @@ export default function DashboardMedico() {
     return caso.status === filtroStatus
   })
 
-  const contarPorStatus = (status) => {
-    return casos.filter((caso) => caso.status === status).length
-  }
+  const contarPorStatus = (status) => casos.filter((caso) => caso.status === status).length
+  const contarAguardandoVideo = () => casos.filter((caso) => caso.aguardando_video).length
 
-  const contarAguardandoVideo = () => {
-    return casos.filter((caso) => caso.aguardando_video).length
+  // Componente interno para os botões de filtro
+  const FilterCard = ({ id, titulo, valor, Icone }) => {
+    const isAtivo = filtroStatus === id
+    return (
+      <button
+        onClick={() => setFiltroStatus(id)}
+        className={`flex flex-col items-start p-5 rounded-2xl border transition-all duration-200 w-full text-left ${
+          isAtivo 
+            ? 'bg-[#142921] border-[#4ade80] shadow-[0_0_15px_rgba(74,222,128,0.1)]' 
+            : 'bg-[#11211C] border-[#1A332A] hover:border-[#24473B] hover:bg-[#142921]'
+        }`}
+      >
+        <div className="flex items-center gap-2 mb-3">
+          <Icone size={16} className={isAtivo ? 'text-[#4ade80]' : 'text-[#7A9C8D]'} />
+          <span className={`text-xs font-bold uppercase tracking-wider ${isAtivo ? 'text-[#4ade80]' : 'text-[#7A9C8D]'}`}>
+            {titulo}
+          </span>
+        </div>
+        <span className="text-3xl font-bold text-white tracking-tight">{valor}</span>
+      </button>
+    )
   }
 
   return (
-    <div className="min-h-screen bg-[#0d1f1a] p-6 font-sans">
-      <div className="max-w-6xl mx-auto animate-fadeUp">
-        <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-10">
-          <div>
-            <p className="text-[#4ab882] text-xs uppercase tracking-wider font-medium mb-2">
-              EloSocial
-            </p>
-            <h1 className="text-[#e8f0ec] text-2xl font-semibold" style={{fontFamily:'Georgia, serif'}}>
-              Painel do Assistente Social
-            </h1>
-            <p className="text-[#5a8a72] text-sm mt-1">
-              Acompanhe casos sociais abertos, atendimentos em andamento e cidadãos aguardando vídeo.
-            </p>
+    <div className="min-h-screen bg-[#0B1511] font-sans text-slate-200 selection:bg-[#4ade80]/30">
+      
+      {/* Header */}
+      <header className="sticky top-0 z-10 bg-[#0B1511]/80 backdrop-blur-md border-b border-[#1A332A] px-6 py-4">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="bg-[#1A332A] p-2 rounded-xl">
+              <LayoutDashboard className="text-[#4ade80]" size={24} />
+            </div>
+            <div>
+              <p className="text-[#4ade80] text-[10px] uppercase tracking-widest font-bold mb-0.5">
+                Plataforma EloSocial
+              </p>
+              <h1 className="text-xl font-bold tracking-tight text-white">
+                Fila de Atendimento
+              </h1>
+            </div>
           </div>
 
           <button
             onClick={buscarCasos}
-            className="bg-[#1a3d30] border border-[#2a6b52] px-4 py-2 rounded-xl text-[#4ab882] text-xs hover:bg-[#224d3d] transition-all"
+            disabled={carregando}
+            className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold border border-[#1A332A] bg-[#11211C] text-[#7A9C8D] hover:text-white hover:border-[#4ade80]/50 hover:bg-[#142921] transition-all disabled:opacity-50"
           >
-            {carregando ? 'Atualizando...' : '🔄 Atualizar casos'}
+            <RefreshCw size={16} className={carregando ? "animate-spin text-[#4ade80]" : ""} />
+            {carregando ? 'Sincronizando...' : 'Atualizar Dados'}
           </button>
         </div>
+      </header>
 
-        <div className="grid md:grid-cols-5 gap-4 mb-6">
-          <button
-            onClick={() => setFiltroStatus('todos')}
-            className={`text-left bg-[#111f1a] border rounded-2xl p-5 transition-all ${
-              filtroStatus === 'todos' ? 'border-[#4ab882]' : 'border-[#1e3b2e]'
-            }`}
-          >
-            <p className="text-[#5a8a72] text-xs uppercase tracking-wider mb-2">Casos abertos</p>
-            <p className="text-[#e8f0ec] text-2xl font-semibold">{casos.length}</p>
-          </button>
-
-          <button
-            onClick={() => setFiltroStatus('aguardando_video')}
-            className={`text-left bg-[#111f1a] border rounded-2xl p-5 transition-all ${
-              filtroStatus === 'aguardando_video' ? 'border-[#4ab882]' : 'border-[#1e3b2e]'
-            }`}
-          >
-            <p className="text-[#5a8a72] text-xs uppercase tracking-wider mb-2">Aguardando vídeo</p>
-            <p className="text-[#e8f0ec] text-2xl font-semibold">{contarAguardandoVideo()}</p>
-          </button>
-
-          <button
-            onClick={() => setFiltroStatus('pendente')}
-            className={`text-left bg-[#111f1a] border rounded-2xl p-5 transition-all ${
-              filtroStatus === 'pendente' ? 'border-[#4ab882]' : 'border-[#1e3b2e]'
-            }`}
-          >
-            <p className="text-[#5a8a72] text-xs uppercase tracking-wider mb-2">Pendentes</p>
-            <p className="text-[#e8f0ec] text-2xl font-semibold">{contarPorStatus('pendente')}</p>
-          </button>
-
-          <button
-            onClick={() => setFiltroStatus('em_atendimento')}
-            className={`text-left bg-[#111f1a] border rounded-2xl p-5 transition-all ${
-              filtroStatus === 'em_atendimento' ? 'border-[#4ab882]' : 'border-[#1e3b2e]'
-            }`}
-          >
-            <p className="text-[#5a8a72] text-xs uppercase tracking-wider mb-2">Em atendimento</p>
-            <p className="text-[#e8f0ec] text-2xl font-semibold">{contarPorStatus('em_atendimento')}</p>
-          </button>
-
-          <button
-            onClick={() => setFiltroStatus('em_acompanhamento')}
-            className={`text-left bg-[#111f1a] border rounded-2xl p-5 transition-all ${
-              filtroStatus === 'em_acompanhamento' ? 'border-[#4ab882]' : 'border-[#1e3b2e]'
-            }`}
-          >
-            <p className="text-[#5a8a72] text-xs uppercase tracking-wider mb-2">Acompanhamento</p>
-            <p className="text-[#e8f0ec] text-2xl font-semibold">{contarPorStatus('em_acompanhamento')}</p>
-          </button>
+      <main className="max-w-7xl mx-auto p-6 space-y-6">
+        
+        {/* KPIs / Filtros */}
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          <FilterCard id="todos" titulo="Total Abertos" valor={casos.length} Icone={Inbox} />
+          <FilterCard id="aguardando_video" titulo="Aguardando Vídeo" valor={contarAguardandoVideo()} Icone={Video} />
+          <FilterCard id="pendente" titulo="Pendentes" valor={contarPorStatus('pendente')} Icone={Clock} />
+          <FilterCard id="em_atendimento" titulo="Em Atendimento" valor={contarPorStatus('em_atendimento')} Icone={Activity} />
+          <FilterCard id="em_acompanhamento" titulo="Acompanhamento" valor={contarPorStatus('em_acompanhamento')} Icone={ShieldCheck} />
         </div>
 
-        <div className="bg-[#111f1a] border border-[#1e3b2e] rounded-3xl overflow-hidden">
-          <table className="w-full text-left">
-            <thead>
-              <tr className="text-[#4a7a60] text-xs uppercase tracking-wider border-b border-[#1e3b2e] bg-[#152b24]">
-                <th className="px-6 py-4">Status</th>
-                <th className="px-6 py-4">Vídeo</th>
-                <th className="px-6 py-4">Prioridade</th>
-                <th className="px-6 py-4">Cidadão</th>
-                <th className="px-6 py-4">Demanda / Situações</th>
-                <th className="px-6 py-4">Ação</th>
-              </tr>
-            </thead>
-
-            <tbody className="divide-y divide-[#1a3330]">
-              {carregando && (
-                <tr>
-                  <td colSpan="6" className="px-6 py-10 text-center text-[#5a8a72] text-sm">
-                    Carregando casos sociais...
-                  </td>
+        {/* Tabela Principal */}
+        <div className="bg-[#11211C] border border-[#1A332A] rounded-3xl overflow-hidden shadow-xl">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left whitespace-nowrap md:whitespace-normal">
+              <thead>
+                <tr className="bg-[#0B1511] border-b border-[#1A332A]">
+                  <th className="px-6 py-4 text-[#7A9C8D] text-xs font-bold uppercase tracking-wider w-[15%]">Status</th>
+                  <th className="px-6 py-4 text-[#7A9C8D] text-xs font-bold uppercase tracking-wider w-[12%]">Prioridade</th>
+                  <th className="px-6 py-4 text-[#7A9C8D] text-xs font-bold uppercase tracking-wider w-[25%]">Cidadão</th>
+                  <th className="px-6 py-4 text-[#7A9C8D] text-xs font-bold uppercase tracking-wider w-[33%]">Vulnerabilidades</th>
+                  <th className="px-6 py-4 text-[#7A9C8D] text-xs font-bold uppercase tracking-wider text-right w-[15%]">Ação</th>
                 </tr>
-              )}
+              </thead>
 
-              {!carregando && casosFiltrados.length === 0 && (
-                <tr>
-                  <td colSpan="6" className="px-6 py-10 text-center text-[#5a8a72] text-sm">
-                    Nenhum caso encontrado para este filtro.
-                  </td>
-                </tr>
-              )}
+              <tbody className="divide-y divide-[#1A332A]">
+                {carregando ? (
+                  <tr>
+                    <td colSpan="5" className="px-6 py-16 text-center">
+                      <div className="flex flex-col items-center justify-center gap-3">
+                        <div className="w-8 h-8 border-2 border-[#1A332A] border-t-[#4ade80] rounded-full animate-spin"></div>
+                        <p className="text-[#7A9C8D] text-sm">Carregando fila de atendimento...</p>
+                      </div>
+                    </td>
+                  </tr>
+                ) : casosFiltrados.length === 0 ? (
+                  <tr>
+                    <td colSpan="5" className="px-6 py-16 text-center">
+                      <div className="flex flex-col items-center justify-center gap-2 text-[#7A9C8D]">
+                        <Inbox size={32} className="opacity-50 mb-2" />
+                        <p className="text-sm font-medium">Nenhum caso encontrado para este filtro.</p>
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  casosFiltrados.map((caso) => (
+                    <tr key={caso.id} className="hover:bg-[#142921] transition-colors group">
+                      <td className="px-6 py-4">
+                        <div className="flex flex-col gap-2 items-start">
+                          {obterStatusBadge(caso.status)}
+                          {caso.aguardando_video && (
+                            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold border border-blue-500/20 bg-blue-500/10 text-blue-400 animate-pulse">
+                              <VideoIcon size={10} /> Em espera
+                            </span>
+                          )}
+                        </div>
+                      </td>
 
-              {!carregando && casosFiltrados.map((caso) => (
-                <tr key={caso.id} className="hover:bg-[#152b24] transition-colors group">
-                  <td className="px-6 py-4">
-                    <span className={`inline-block border px-2 py-1 rounded-md text-[10px] font-bold ${obterCorStatus(caso.status)}`}>
-                      {obterTextoStatus(caso.status)}
-                    </span>
-                  </td>
+                      <td className="px-6 py-4 align-top">
+                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold border tracking-wide ${obterCorPrioridade(caso.prioridade)}`}>
+                          {caso.prioridade || 'BAIXA'}
+                        </span>
+                      </td>
 
-                  <td className="px-6 py-4">
-                    {caso.aguardando_video ? (
-                      <span className="inline-block border border-blue-600/40 bg-blue-500/20 text-blue-300 px-2 py-1 rounded-md text-[10px] font-bold">
-                        Aguardando
-                      </span>
-                    ) : (
-                      <span className="text-[#4a7a60] text-xs">
-                        —
-                      </span>
-                    )}
-                  </td>
+                      <td className="px-6 py-4 align-top">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-[#1A332A] flex items-center justify-center text-[#7A9C8D] shrink-0">
+                            <User size={14} />
+                          </div>
+                          <p className="text-[#E2E8F0] text-sm font-bold truncate max-w-[200px] md:max-w-none">
+                            {caso.paciente_nome || 'Não identificado'}
+                          </p>
+                        </div>
+                      </td>
 
-                  <td className="px-6 py-4">
-                    <span className={`px-2 py-1 rounded-md text-[10px] font-bold text-white ${obterCorPrioridade(caso.prioridade)}`}>
-                      {caso.prioridade || 'BAIXA'}
-                    </span>
-                  </td>
+                      <td className="px-6 py-4 align-top">
+                        <div className="flex items-start gap-2">
+                          <AlertCircle size={14} className="text-[#7A9C8D] shrink-0 mt-0.5 hidden md:block" />
+                          <p className="text-[#A0BDB0] text-xs leading-relaxed line-clamp-2">
+                            {formatarSituacoes(caso.sintomas)}
+                          </p>
+                        </div>
+                      </td>
 
-                  <td className="px-6 py-4 text-[#c8e0d4] text-sm font-medium">
-                    {caso.paciente_nome || 'Cidadão não identificado'}
-                  </td>
-
-                  <td className="px-6 py-4 text-[#5a8a72] text-xs italic max-w-md">
-                    {formatarSituacoes(caso.sintomas)}
-                  </td>
-
-                  <td className="px-6 py-4">
-                    <button
-                      onClick={() => abrirCaso(caso)}
-                      className={`text-white text-xs px-4 py-2 rounded-lg opacity-80 group-hover:opacity-100 transition-all ${
-                        caso.aguardando_video ? 'bg-blue-700' : 'bg-[#1e7a52]'
-                      }`}
-                    >
-                      Abrir caso 
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                      <td className="px-6 py-4 align-middle text-right">
+                        <button
+                          onClick={() => abrirCaso(caso)}
+                          className={`inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-sm ${
+                            caso.aguardando_video 
+                              ? 'bg-[#4ade80] text-[#0B1511] hover:bg-[#22c55e] shadow-[0_0_15px_rgba(74,222,128,0.2)] hover:shadow-[0_0_20px_rgba(74,222,128,0.4)]' 
+                              : 'bg-[#1A332A] text-[#4ade80] hover:bg-[#24473B] border border-[#24473B]'
+                          }`}
+                        >
+                          Abrir Caso <ArrowRight size={14} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
 
-        <p className="text-[#4a7a60] text-xs mt-5 leading-relaxed">
-          O indicador “Aguardando vídeo” aparece quando o cidadão entrou na sala de espera da teleconferência.
-        </p>
-      </div>
+      </main>
     </div>
   )
 }
