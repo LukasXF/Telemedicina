@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
-import VideoCall from '../components/VideoCall'
 import {
   User,
   Phone,
@@ -14,7 +13,6 @@ import {
   Briefcase,
   Lock,
   Video,
-  PhoneOff,
   CheckCircle,
   ChevronLeft,
   Activity,
@@ -31,9 +29,6 @@ export default function ConsultaMedico() {
   const [caso, setCaso] = useState(null)
   const [carregando, setCarregando] = useState(true)
   const [salvando, setSalvando] = useState(false)
-  const [videoAtivo, setVideoAtivo] = useState(false)
-
-  const URL_SALA = 'https://telesaude.daily.co/Sala-atendimento'
 
   useEffect(() => {
     const buscarCaso = async () => {
@@ -64,7 +59,6 @@ export default function ConsultaMedico() {
 
       sessionStorage.setItem('elosocial_caso_atual', data.id)
       setCaso(data)
-      setVideoAtivo(data.status === 'em_atendimento')
       setCarregando(false)
     }
 
@@ -74,77 +68,6 @@ export default function ConsultaMedico() {
   const sair = async () => {
     await supabase.auth.signOut()
     navigate('/')
-  }
-
-  const atualizarCasoLocal = (camposAtualizados) => {
-    setCaso((casoAtual) => {
-      if (!casoAtual) return casoAtual
-
-      return {
-        ...casoAtual,
-        ...camposAtualizados,
-      }
-    })
-  }
-
-  const iniciarTeleconferencia = async () => {
-    if (!caso || !idTriagem) return
-
-    setSalvando(true)
-
-    const { error } = await supabase
-      .from('triagens')
-      .update({
-        status: 'em_atendimento',
-        aguardando_video: false,
-      })
-      .eq('id', idTriagem)
-
-    setSalvando(false)
-
-    if (error) {
-      alert('Erro ao iniciar teleconferência: ' + error.message)
-      return
-    }
-
-    atualizarCasoLocal({
-      status: 'em_atendimento',
-      aguardando_video: false,
-    })
-
-    setVideoAtivo(true)
-  }
-
-  const finalizarChamada = async () => {
-    if (!caso || !idTriagem) return
-
-    const confirmar = window.confirm('Finalizar a chamada e manter o caso em acompanhamento?')
-
-    if (!confirmar) return
-
-    setSalvando(true)
-
-    const { error } = await supabase
-      .from('triagens')
-      .update({
-        status: 'em_acompanhamento',
-        aguardando_video: false,
-      })
-      .eq('id', idTriagem)
-
-    setSalvando(false)
-
-    if (error) {
-      alert('Erro ao finalizar chamada: ' + error.message)
-      return
-    }
-
-    atualizarCasoLocal({
-      status: 'em_acompanhamento',
-      aguardando_video: false,
-    })
-
-    setVideoAtivo(false)
   }
 
   const concluirCaso = async () => {
@@ -193,6 +116,13 @@ export default function ConsultaMedico() {
   const abrirCofreDigital = () => {
     guardarCasoAtual()
     navigate('/cofre-digital-assistente', { state: { idTriagem: caso.id } })
+  }
+
+  const abrirTeleconferencia = () => {
+    sessionStorage.setItem('elosocial_caso_atual', caso.id)
+    navigate('/teleconferencia-assistente', {
+      state: { idTriagem: caso.id },
+    })
   }
 
   const formatarSituacoes = (situacoes) => {
@@ -349,7 +279,6 @@ export default function ConsultaMedico() {
 
   const dadosAcolhimento = obterDadosAcolhimento(caso?.detalhes || '')
   const casoConcluido = caso?.status === 'concluido'
-  const chamadaDisponivel = caso?.status === 'em_atendimento' || caso?.aguardando_video
 
   return (
     <div className="min-h-screen bg-[#0B1511] text-slate-200 font-sans selection:bg-[#4ade80]/30">
@@ -514,30 +443,6 @@ export default function ConsultaMedico() {
               )}
             </div>
           </section>
-
-          {videoAtivo && (
-            <section className="bg-[#11211C] border border-[#1A332A] rounded-3xl p-6 md:p-8">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-                <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                  <Video className="text-[#4ade80]" />
-                  Sala de atendimento
-                </h3>
-
-                <button
-                  onClick={finalizarChamada}
-                  disabled={salvando}
-                  className="flex items-center justify-center gap-2 border border-red-500/30 text-red-400 bg-red-500/10 px-6 py-2.5 rounded-xl text-sm font-bold hover:bg-red-500/20 disabled:opacity-40 transition-all"
-                >
-                  <PhoneOff size={16} />
-                  {salvando ? 'Encerrando...' : 'Finalizar chamada'}
-                </button>
-              </div>
-
-              <div className="h-[500px] bg-[#050A08] border border-[#1A332A] rounded-2xl overflow-hidden ring-4 ring-[#4ade80]/10">
-                <VideoCall url={URL_SALA} userName="Assistente Social" />
-              </div>
-            </section>
-          )}
         </div>
 
         <div className="lg:col-span-4 space-y-6">
@@ -548,18 +453,16 @@ export default function ConsultaMedico() {
 
             <div className="space-y-3">
               <BotaoFerramenta
-                titulo={videoAtivo ? 'Chamada em andamento' : 'Teleconferência'}
+                titulo={caso?.status === 'em_atendimento' ? 'Chamada em andamento' : 'Teleconferência'}
                 subtitulo={
-                  videoAtivo
-                    ? 'Sala aberta neste atendimento'
-                    : chamadaDisponivel
-                      ? 'Cidadão aguardando atendimento'
-                      : 'Abrir sala de atendimento'
+                  caso?.aguardando_video
+                    ? 'Cidadão aguardando atendimento'
+                    : 'Sala de atendimento por vídeo'
                 }
                 Icone={Video}
-                destaque={videoAtivo || chamadaDisponivel}
-                disabled={salvando || casoConcluido || videoAtivo}
-                onClick={iniciarTeleconferencia}
+                destaque={caso?.status === 'em_atendimento' || caso?.aguardando_video}
+                disabled={casoConcluido}
+                onClick={abrirTeleconferencia}
               />
 
               <BotaoFerramenta
