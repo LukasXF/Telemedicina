@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../supabaseClient'
+import { Send, MessageSquare, Loader2 } from 'lucide-react'
 
 export default function MensagensCaso({ casoId, remetenteTipo, remetenteNome }) {
   const [mensagens, setMensagens] = useState([])
@@ -148,31 +149,28 @@ export default function MensagensCaso({ casoId, remetenteTipo, remetenteNome }) 
   }
 
   return (
-    <div className="bg-[#111f1a] border border-[#1e3b2e] rounded-3xl p-6">
-      <div className="mb-5">
-        <h3 className="text-[#4ab882] text-xs font-bold uppercase tracking-widest mb-2">
-          Mensagens do caso
-        </h3>
-
-        <p className="text-[#5a8a72] text-sm leading-relaxed">
-          Converse com a outra parte e mantenha o histórico salvo dentro deste caso social.
-        </p>
-      </div>
-
-      <div className="bg-[#0d1f1a] border border-[#1e3b2e] rounded-2xl p-4 h-80 overflow-y-auto mb-4">
+    <div className="flex flex-col h-full w-full bg-transparent">
+      
+      {/* Área de rolagem do chat */}
+      <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 bg-[#050A08]">
+        
         {carregando && (
-          <p className="text-[#5a8a72] text-sm text-center mt-24">
-            Carregando mensagens...
-          </p>
+          <div className="flex flex-col items-center justify-center h-full gap-3 text-[#7A9C8D]">
+            <Loader2 className="animate-spin text-[#4ade80]" size={28} />
+            <p className="text-sm font-medium">Sincronizando histórico...</p>
+          </div>
         )}
 
         {!carregando && mensagens.length === 0 && (
-          <div className="text-center mt-20">
-            <p className="text-[#c8e0d4] text-sm font-medium mb-1">
-              Nenhuma mensagem ainda
+          <div className="flex flex-col items-center justify-center h-full text-center mt-10 opacity-70">
+            <div className="w-16 h-16 bg-[#11211C] rounded-full flex items-center justify-center mb-4 border border-[#1A332A]">
+              <MessageSquare size={24} className="text-[#4ade80]" />
+            </div>
+            <p className="text-[#E2E8F0] text-sm font-bold mb-1">
+              Nenhuma mensagem trocada
             </p>
-            <p className="text-[#5a8a72] text-xs">
-              Envie a primeira mensagem para iniciar o histórico do caso.
+            <p className="text-[#7A9C8D] text-xs">
+              O histórico deste caso está vazio.
             </p>
           </div>
         )}
@@ -183,30 +181,30 @@ export default function MensagensCaso({ casoId, remetenteTipo, remetenteNome }) 
           return (
             <div
               key={mensagem.id}
-              className={`mb-4 flex ${minhaMensagem ? 'justify-end' : 'justify-start'}`}
+              className={`flex w-full ${minhaMensagem ? 'justify-end' : 'justify-start'}`}
             >
               <div
-                className={`max-w-[85%] rounded-2xl px-4 py-3 border ${
+                className={`max-w-[85%] sm:max-w-[75%] px-4 py-3 shadow-sm ${
                   minhaMensagem
-                    ? 'bg-[#1e7a52] border-[#2a9162] text-white'
-                    : 'bg-[#111f1a] border-[#1e3b2e] text-[#c8e0d4]'
+                    ? 'bg-[#4ade80] text-[#0B1511] rounded-2xl rounded-tr-sm'
+                    : 'bg-[#1A332A] border border-[#24473B] text-[#E2E8F0] rounded-2xl rounded-tl-sm'
                 }`}
               >
-                <div className="flex items-center justify-between gap-4 mb-1">
+                <div className="flex items-center justify-between gap-4 mb-1.5">
                   <p className={`text-[10px] uppercase tracking-wider font-bold ${
-                    minhaMensagem ? 'text-[#d8f5e8]' : 'text-[#4ab882]'
+                    minhaMensagem ? 'text-[#06301A]' : 'text-[#4ade80]'
                   }`}>
                     {mensagem.remetente_nome || obterNomeTipo(mensagem.remetente_tipo)}
                   </p>
 
-                  <p className={`text-[10px] ${
-                    minhaMensagem ? 'text-[#d8f5e8]' : 'text-[#5a8a72]'
+                  <p className={`text-[10px] font-medium ${
+                    minhaMensagem ? 'text-[#06301A]/70' : 'text-[#7A9C8D]'
                   }`}>
                     {formatarData(mensagem.created_at)}
                   </p>
                 </div>
 
-                <p className="text-sm leading-relaxed whitespace-pre-wrap">
+                <p className="text-sm leading-relaxed whitespace-pre-wrap font-medium">
                   {mensagem.texto}
                 </p>
               </div>
@@ -217,23 +215,34 @@ export default function MensagensCaso({ casoId, remetenteTipo, remetenteNome }) 
         <div ref={fimDaListaRef}></div>
       </div>
 
-      <form onSubmit={enviarMensagem} className="flex flex-col sm:flex-row gap-3">
-        <textarea
-          value={texto}
-          onChange={(e) => setTexto(e.target.value)}
-          rows="2"
-          placeholder="Digite uma mensagem..."
-          className="flex-1 bg-[#0d1f1a] border border-[#1e3b2e] rounded-xl px-4 py-3 text-[#c8e0d4] text-sm outline-none focus:border-[#2a9162] resize-none"
-        ></textarea>
+      {/* Área de Input (Fixo na parte inferior) */}
+      <div className="p-4 bg-[#11211C] border-t border-[#1A332A]">
+        <form onSubmit={enviarMensagem} className="flex gap-3 max-w-4xl mx-auto items-end">
+          <textarea
+            value={texto}
+            onChange={(e) => setTexto(e.target.value)}
+            rows="2"
+            placeholder="Escreva sua mensagem..."
+            className="flex-1 bg-[#0B1511] border border-[#1A332A] rounded-xl px-4 py-3 text-sm text-[#E2E8F0] placeholder-[#4A6B5C] outline-none focus:border-[#4ade80]/50 focus:ring-1 focus:ring-[#4ade80]/50 resize-none transition-all"
+            onKeyDown={(e) => {
+              // Permite enviar com "Enter" e pular linha com "Shift + Enter"
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault()
+                enviarMensagem(e)
+              }
+            }}
+          ></textarea>
 
-        <button
-          type="submit"
-          disabled={enviando || !texto.trim()}
-          className="bg-[#1e7a52] hover:bg-[#22905f] disabled:bg-[#1a3330] disabled:text-[#4a7a60] text-[#e8f5ee] px-6 py-3 rounded-xl text-sm font-medium transition-all"
-        >
-          {enviando ? 'Enviando...' : 'Enviar'}
-        </button>
-      </form>
+          <button
+            type="submit"
+            disabled={enviando || !texto.trim()}
+            className="h-[46px] flex items-center justify-center gap-2 bg-[#4ade80] hover:bg-[#22c55e] disabled:bg-[#1A332A] disabled:text-[#4A6B5C] text-[#0B1511] px-5 rounded-xl text-sm font-bold transition-all shadow-[0_0_15px_rgba(74,222,128,0.1)] hover:shadow-[0_0_20px_rgba(74,222,128,0.2)] disabled:shadow-none mb-[2px]"
+          >
+            {enviando ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
+            <span className="hidden sm:inline">{enviando ? 'Enviando...' : 'Enviar'}</span>
+          </button>
+        </form>
+      </div>
     </div>
   )
 }

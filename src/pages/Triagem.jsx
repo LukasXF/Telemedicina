@@ -1,215 +1,807 @@
-import { useState, useEffect } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
-import { supabase } from '../supabaseClient'
+import { useState, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { supabase } from "../supabaseClient";
 
+import {
+  AlertTriangle,
+  ArrowLeft,
+  Check,
+  CheckCircle,
+  ChevronLeft,
+  ChevronRight,
+  ClipboardList,
+  CreditCard,
+  DollarSign,
+  FileText,
+  HeartHandshake,
+  Home,
+  Loader2,
+  Lock,
+  MapPin,
+  Phone,
+  Shield,
+  User,
+  Users,
+} from "lucide-react";
+
+const DEMANDAS_PRINCIPAIS = [
+  {
+    valor: "Alimentação",
+    titulo: "Alimentação",
+    Icone: HeartHandshake,
+  },
+  {
+    valor: "Moradia ou risco de despejo",
+    titulo: "Moradia",
+    Icone: Home,
+  },
+  {
+    valor: "Violência ou ameaça",
+    titulo: "Violência ou ameaça",
+    Icone: AlertTriangle,
+  },
+  {
+    valor: "Benefícios sociais",
+    titulo: "Benefícios sociais",
+    Icone: ClipboardList,
+  },
+  {
+    valor: "Documentação",
+    titulo: "Documentação",
+    Icone: CreditCard,
+  },
+  {
+    valor: "Criança, adolescente, idoso ou PCD em risco",
+    titulo: "Pessoa vulnerável",
+    Icone: Users,
+  },
+  {
+    valor: "Saúde e medicação",
+    titulo: "Saúde e medicação",
+    Icone: Shield,
+  },
+  {
+    valor: "Orientação social",
+    titulo: "Orientação social",
+    Icone: FileText,
+  },
+  {
+    valor: "Outra necessidade",
+    titulo: "Outra necessidade",
+    Icone: CheckCircle,
+  },
+];
+
+const SITUACOES_SOCIAIS = [
+  "Risco de violência",
+  "Falta de alimento",
+  "Sem moradia ou risco de despejo",
+  "Criança ou adolescente em risco",
+  "Idoso ou PCD em risco",
+  "Pessoa doente sem acompanhamento",
+  "Família sem renda",
+  "Benefício bloqueado ou pendente",
+  "Documentação pendente",
+];
+
+const BENEFICIOS_SOCIAIS = [
+  "Bolsa Família",
+  "BPC",
+  "Auxílio eventual",
+  "Benefício bloqueado",
+  "Nenhum",
+  "Não sei informar",
+  "Outro",
+];
+
+const FAIXAS_RENDA = [
+  "",
+  "Sem renda",
+  "Até 1 salário mínimo",
+  "De 1 a 2 salários mínimos",
+  "Acima de 2 salários mínimos",
+  "Não sabe informar",
+  "Prefere não informar",
+];
+
+const ETAPAS = [
+  {
+    titulo: "Contato",
+    subtitulo: "Dados básicos para retorno e localização.",
+    Icone: Phone,
+  },
+  {
+    titulo: "Família",
+    subtitulo: "Contexto familiar, renda e benefícios.",
+    Icone: Users,
+  },
+  {
+    titulo: "Motivo",
+    subtitulo: "Principal necessidade do acolhimento.",
+    Icone: ClipboardList,
+  },
+  {
+    titulo: "Urgência",
+    subtitulo: "Situação atual e riscos identificados.",
+    Icone: AlertTriangle,
+  },
+  {
+    titulo: "Relato",
+    subtitulo: "Registro final antes do envio.",
+    Icone: FileText,
+  },
+];
+
+function CampoTexto({
+  label,
+  value,
+  onChange,
+  Icone,
+  type = "text",
+  required = false,
+  textarea = false,
+  rows = 4,
+}) {
+  return (
+    <div>
+      <label className="flex items-center gap-2 text-[#8FB5A4] text-[11px] font-bold uppercase tracking-[0.18em] mb-2.5">
+        {Icone && <Icone size={14} className="text-[#4ade80]" />}
+        {label}
+        {required && <span className="text-[#f87171]">*</span>}
+      </label>
+
+      {textarea ? (
+        <textarea
+          rows={rows}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="w-full bg-[#07110E] border border-[#1B3A30] rounded-2xl px-4 py-3.5 text-[#E8F5EE] text-sm outline-none resize-none focus:border-[#4ade80]/70 focus:ring-4 focus:ring-[#4ade80]/10 transition-all"
+        />
+      ) : (
+        <input
+          type={type}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="w-full bg-[#07110E] border border-[#1B3A30] rounded-2xl px-4 py-3.5 text-[#E8F5EE] text-sm outline-none focus:border-[#4ade80]/70 focus:ring-4 focus:ring-[#4ade80]/10 transition-all"
+        />
+      )}
+    </div>
+  );
+}
+
+function CampoSelect({ label, value, onChange, Icone, children }) {
+  return (
+    <div>
+      <label className="flex items-center gap-2 text-[#8FB5A4] text-[11px] font-bold uppercase tracking-[0.18em] mb-2.5">
+        {Icone && <Icone size={14} className="text-[#4ade80]" />}
+        {label}
+      </label>
+
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-full bg-[#07110E] border border-[#1B3A30] rounded-2xl px-4 py-3.5 text-[#E8F5EE] text-sm outline-none focus:border-[#4ade80]/70 focus:ring-4 focus:ring-[#4ade80]/10 transition-all"
+      >
+        {children}
+      </select>
+    </div>
+  );
+}
+function CartaoOpcao({ titulo, Icone, selecionado, onClick }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`group relative overflow-hidden min-h-32 rounded-3xl border p-5 text-left transition-all duration-200 ${
+        selecionado
+          ? "border-[#4ade80]/70 bg-[#4ade80]/12 shadow-[0_18px_45px_rgba(74,222,128,0.08)]"
+          : "border-[#1B3A30] bg-[#07110E] hover:border-[#2E5D4E] hover:bg-[#0D1D18]"
+      }`}
+    >
+      <div className="absolute -right-8 -top-8 w-24 h-24 rounded-full bg-[#4ade80]/0 group-hover:bg-[#4ade80]/5 transition-all" />
+
+      <div className="relative flex items-start justify-between gap-3 mb-5">
+        <div
+          className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-all ${
+            selecionado
+              ? "bg-[#4ade80] text-[#06100C]"
+              : "bg-[#10251E] text-[#8FB5A4] group-hover:text-[#4ade80]"
+          }`}
+        >
+          <Icone size={19} />
+        </div>
+
+        <div
+          className={`w-6 h-6 rounded-full border flex items-center justify-center transition-all ${
+            selecionado
+              ? "bg-[#4ade80] border-[#4ade80] text-[#06100C]"
+              : "border-[#2E5D4E] text-transparent"
+          }`}
+        >
+          <Check size={14} />
+        </div>
+      </div>
+
+      <p className="relative text-white text-sm font-black leading-tight">
+        {titulo}
+      </p>
+    </button>
+  );
+}
+
+function BotaoSelecao({ children, selecionado, onClick }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`rounded-2xl border px-4 py-3.5 text-left transition-all duration-200 ${
+        selecionado
+          ? "border-[#4ade80]/70 bg-[#4ade80]/12 text-white"
+          : "border-[#1B3A30] bg-[#07110E] text-[#B7D2C6] hover:border-[#2E5D4E] hover:bg-[#0D1D18]"
+      }`}
+    >
+      <div className="flex items-start gap-3">
+        <div
+          className={`w-5 h-5 rounded-md border flex items-center justify-center shrink-0 mt-0.5 transition-all ${
+            selecionado
+              ? "bg-[#4ade80] border-[#4ade80] text-[#06100C]"
+              : "border-[#2E5D4E] text-transparent"
+          }`}
+        >
+          <Check size={13} />
+        </div>
+
+        <span className="text-sm leading-relaxed font-medium">{children}</span>
+      </div>
+    </button>
+  );
+}
+
+function PainelLateral({
+  etapaAtual,
+  demandaFinal,
+  urgencia,
+  situacoesCount,
+  formularioValido,
+  cidadaoNome,
+}) {
+  const progresso = Math.round(((etapaAtual + 1) / ETAPAS.length) * 100);
+
+  return (
+    <aside className="lg:col-span-4 lg:sticky lg:top-24">
+      <div className="relative overflow-hidden rounded-[2rem] border border-[#1B3A30] bg-[#0D1D18] p-6 shadow-2xl">
+        <div className="absolute -top-20 -right-20 w-52 h-52 rounded-full bg-[#4ade80]/10 blur-3xl" />
+        <div className="absolute -bottom-24 -left-24 w-60 h-60 rounded-full bg-emerald-300/5 blur-3xl" />
+
+        <div className="relative">
+          <div className="flex items-center gap-2 mb-7">
+            <div className="w-10 h-10 rounded-2xl bg-[#4ade80] text-[#06100C] flex items-center justify-center">
+              <HeartHandshake size={20} />
+            </div>
+
+            <div>
+              <p className="text-[#4ade80] text-[10px] uppercase tracking-[0.2em] font-black">
+                EloSocial
+              </p>
+              <p className="text-white text-sm font-bold">Acolhimento guiado</p>
+            </div>
+          </div>
+
+          <div className="mb-7">
+            <div className="flex items-end justify-between mb-3">
+              <div>
+                <p className="text-[#8FB5A4] text-[10px] uppercase tracking-[0.18em] font-bold mb-1">
+                  Progresso
+                </p>
+                <p className="text-white text-3xl font-black">{progresso}%</p>
+              </div>
+
+              <div className="w-14 h-14 rounded-2xl bg-[#07110E] border border-[#1B3A30] flex items-center justify-center">
+                <span className="text-[#4ade80] text-sm font-black">
+                  {etapaAtual + 1}/{ETAPAS.length}
+                </span>
+              </div>
+            </div>
+
+            <div className="h-2 bg-[#183429] rounded-full overflow-hidden">
+              <div
+                className="h-full bg-[#4ade80] rounded-full transition-all duration-300"
+                style={{ width: `${progresso}%` }}
+              />
+            </div>
+          </div>
+          <div className="space-y-3 mb-7">
+            {ETAPAS.map((etapa, index) => {
+              const ativa = etapaAtual === index;
+              const concluida = etapaAtual > index;
+              const Icone = etapa.Icone;
+
+              return (
+                <div
+                  key={etapa.titulo}
+                  className={`flex items-center gap-3 rounded-2xl border px-4 py-3 transition-all ${
+                    ativa
+                      ? "border-[#4ade80]/60 bg-[#4ade80]/10"
+                      : "border-[#1B3A30] bg-[#07110E]/80"
+                  }`}
+                >
+                  <div
+                    className={`w-8 h-8 rounded-xl flex items-center justify-center ${
+                      concluida
+                        ? "bg-[#4ade80] text-[#06100C]"
+                        : ativa
+                          ? "bg-[#10251E] text-[#4ade80]"
+                          : "bg-[#10251E] text-[#8FB5A4]"
+                    }`}
+                  >
+                    {concluida ? <Check size={15} /> : <Icone size={15} />}
+                  </div>
+
+                  <div>
+                    <p className="text-white text-sm font-bold">
+                      {etapa.titulo}
+                    </p>
+                    <p className="text-[#8FB5A4] text-[11px]">
+                      {index === etapaAtual
+                        ? "Em preenchimento"
+                        : concluida
+                          ? "Concluído"
+                          : "Pendente"}
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="rounded-3xl border border-[#1B3A30] bg-[#07110E] p-5 mb-5">
+            <p className="text-[#8FB5A4] text-[10px] uppercase tracking-[0.18em] font-bold mb-4">
+              Resumo
+            </p>
+
+            <div className="space-y-4">
+              <div>
+                <p className="text-[#8FB5A4] text-[11px] mb-1">Cidadão</p>
+                <p className="text-white text-sm font-bold">{cidadaoNome}</p>
+              </div>
+
+              <div>
+                <p className="text-[#8FB5A4] text-[11px] mb-1">Motivo</p>
+                <p className="text-white text-sm font-bold">
+                  {demandaFinal || "Não informado"}
+                </p>
+              </div>
+
+              <div>
+                <p className="text-[#8FB5A4] text-[11px] mb-1">Urgência</p>
+                <p className="text-white text-sm font-bold">
+                  {urgencia === "alta" && "Atenção imediata"}
+                  {urgencia === "media" && "Retorno breve"}
+                  {urgencia === "baixa" && "Pode aguardar"}
+                </p>
+              </div>
+
+              <div>
+                <p className="text-[#8FB5A4] text-[11px] mb-1">Situações</p>
+                <p className="text-white text-sm font-bold">{situacoesCount}</p>
+              </div>
+            </div>
+          </div>
+
+          <div
+            className={`rounded-2xl border px-4 py-3 ${
+              formularioValido
+                ? "border-[#4ade80]/40 bg-[#4ade80]/10 text-[#4ade80]"
+                : "border-[#1B3A30] bg-[#07110E] text-[#8FB5A4]"
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              {formularioValido ? (
+                <CheckCircle size={16} />
+              ) : (
+                <Lock size={16} />
+              )}
+
+              <p className="text-xs font-black">
+                {formularioValido
+                  ? "Pronto para envio"
+                  : "Aguardando informações"}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </aside>
+  );
+}
+
+function extrairCampoDoResumo(texto, nomeCampo) {
+  if (!texto) return "";
+
+  const linha = texto
+    .split("\n")
+    .find((item) => item.toLowerCase().startsWith(nomeCampo.toLowerCase()));
+
+  if (!linha) return "";
+
+  return linha
+    .split(":")
+    .slice(1)
+    .join(":")
+    .trim()
+    .replace("Não informado", "");
+}
+
+function extrairDescricaoDoResumo(texto) {
+  if (!texto) return "";
+
+  const marcador = "Descrição do cidadão:";
+  const indice = texto.indexOf(marcador);
+
+  if (indice === -1) return texto;
+
+  return texto
+    .slice(indice + marcador.length)
+    .trim()
+    .replace("Não informado", "");
+}
 export default function Triagem() {
-  const navigate = useNavigate()
-  const [searchParams] = useSearchParams()
-  const modoEdicao = searchParams.get('editar') === '1'
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const modoEdicao = searchParams.get("editar") === "1";
 
-  const [situacoesMarcadas, setSituacoesMarcadas] = useState([])
-  const [demandaPrincipal, setDemandaPrincipal] = useState('')
-  const [urgencia, setUrgencia] = useState('baixa')
-  const [telefone, setTelefone] = useState('')
-  const [endereco, setEndereco] = useState('')
-  const [cartaoSus, setCartaoSus] = useState('')
-  const [composicaoFamiliar, setComposicaoFamiliar] = useState('')
-  const [rendaFamiliar, setRendaFamiliar] = useState('')
-  const [detalhes, setDetalhes] = useState('')
-  const [enviando, setEnviando] = useState(false)
-  const [carregando, setCarregando] = useState(true)
-  const [cidadaoNome, setCidadaoNome] = useState('Cidadão')
-  const [casoExistente, setCasoExistente] = useState(null)
-
-  const situacoesSociais = [
-    'Há risco de violência doméstica ou familiar',
-    'A família está sem alimento no momento',
-    'Há criança ou adolescente em situação de risco',
-    'Há idoso ou pessoa com deficiência em situação de risco',
-    'A família está sem moradia ou em risco de despejo',
-    'Há pessoa doente sem acompanhamento ou medicação',
-    'A família está sem renda',
-    'Precisa atualizar CadÚnico ou benefício social',
-    'Precisa de orientação sobre documentação',
-  ]
+  const [etapaAtual, setEtapaAtual] = useState(0);
+  const [telefone, setTelefone] = useState("");
+  const [idade, setIdade] = useState("");
+  const [cartaoSus, setCartaoSus] = useState("");
+  const [bairroLocalidade, setBairroLocalidade] = useState("");
+  const [pontoReferencia, setPontoReferencia] = useState("");
+  const [territorioCras, setTerritorioCras] = useState("");
+  const [composicaoFamiliar, setComposicaoFamiliar] = useState("");
+  const [rendaFamiliar, setRendaFamiliar] = useState("");
+  const [beneficios, setBeneficios] = useState([]);
+  const [outrosBeneficios, setOutrosBeneficios] = useState("");
+  const [demandaPrincipal, setDemandaPrincipal] = useState("");
+  const [outraDemanda, setOutraDemanda] = useState("");
+  const [urgencia, setUrgencia] = useState("baixa");
+  const [situacoesMarcadas, setSituacoesMarcadas] = useState([]);
+  const [outraSituacaoAtiva, setOutraSituacaoAtiva] = useState(false);
+  const [outrasSituacoes, setOutrasSituacoes] = useState("");
+  const [detalhes, setDetalhes] = useState("");
+  const [enviando, setEnviando] = useState(false);
+  const [carregando, setCarregando] = useState(true);
+  const [cidadaoNome, setCidadaoNome] = useState("Cidadão");
+  const [casoExistente, setCasoExistente] = useState(null);
 
   useEffect(() => {
     const buscarDadosIniciais = async () => {
-      setCarregando(true)
+      setCarregando(true);
 
-      const { data: { user } } = await supabase.auth.getUser()
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
 
       if (!user) {
-        navigate('/')
-        return
+        navigate("/");
+        return;
       }
 
       const { data: perfil } = await supabase
-        .from('perfis')
-        .select('nome')
-        .eq('id', user.id)
-        .maybeSingle()
+        .from("perfis")
+        .select("nome")
+        .eq("id", user.id)
+        .maybeSingle();
 
-      if (perfil?.nome) {
-        setCidadaoNome(perfil.nome)
-      } else {
-        setCidadaoNome(user.email || 'Cidadão')
-      }
+      setCidadaoNome(perfil?.nome || user.email || "Cidadão");
 
       const { data: casoAtual, error } = await supabase
-        .from('triagens')
-        .select('*')
-        .eq('user_id', user.id)
-        .in('status', ['pendente', 'em_atendimento', 'em_acompanhamento'])
-        .order('created_at', { ascending: false })
+        .from("triagens")
+        .select("*")
+        .eq("user_id", user.id)
+        .in("status", ["pendente", "em_atendimento", "em_acompanhamento"])
+        .order("created_at", { ascending: false })
         .limit(1)
-        .maybeSingle()
+        .maybeSingle();
 
       if (error) {
-        alert('Erro ao buscar acolhimento existente: ' + error.message)
-        setCarregando(false)
-        return
+        alert("Erro ao buscar acolhimento existente: " + error.message);
+        setCarregando(false);
+        return;
       }
 
       if (casoAtual) {
-        setCasoExistente(casoAtual)
+        setCasoExistente(casoAtual);
 
         if (modoEdicao) {
-          carregarCasoNoFormulario(casoAtual)
+          carregarCasoNoFormulario(casoAtual);
         }
       }
 
-      setCarregando(false)
-    }
+      setCarregando(false);
+    };
 
-    buscarDadosIniciais()
-  }, [navigate, modoEdicao])
-
-  const extrairCampoDoResumo = (texto, nomeCampo) => {
-    if (!texto) return ''
-
-    const linhas = texto.split('\n')
-    const linha = linhas.find((item) => item.toLowerCase().startsWith(nomeCampo.toLowerCase()))
-
-    if (!linha) return ''
-
-    return linha.split(':').slice(1).join(':').trim().replace('Não informado', '')
-  }
-
-  const extrairDescricaoDoResumo = (texto) => {
-    if (!texto) return ''
-
-    const marcador = 'Descrição do cidadão:'
-    const indice = texto.indexOf(marcador)
-
-    if (indice === -1) return texto
-
-    return texto.slice(indice + marcador.length).trim().replace('Não informado', '')
-  }
+    buscarDadosIniciais();
+  }, [navigate, modoEdicao]);
 
   const carregarCasoNoFormulario = (caso) => {
-    const dados = Array.isArray(caso.sintomas) ? caso.sintomas : []
+    const dados = Array.isArray(caso.sintomas) ? caso.sintomas : [];
+    const demandaSalva = dados[0] || "";
 
-    setDemandaPrincipal(dados[0] || '')
-    setSituacoesMarcadas(dados.slice(1))
-    setUrgencia(caso.duracao || 'baixa')
-    setTelefone(extrairCampoDoResumo(caso.detalhes, 'Telefone para contato'))
-    setEndereco(extrairCampoDoResumo(caso.detalhes, 'Endereço/bairro'))
-    setCartaoSus(extrairCampoDoResumo(caso.detalhes, 'Cartão SUS/NIS'))
-    setComposicaoFamiliar(extrairCampoDoResumo(caso.detalhes, 'Composição familiar'))
-    setRendaFamiliar(extrairCampoDoResumo(caso.detalhes, 'Renda familiar aproximada'))
-    setDetalhes(extrairDescricaoDoResumo(caso.detalhes))
-  }
+    const demandaExiste = DEMANDAS_PRINCIPAIS.some(
+      (item) => item.valor === demandaSalva,
+    );
 
-  const lidarComSituacao = (situacao) => {
-    if (situacoesMarcadas.includes(situacao)) {
-      setSituacoesMarcadas(situacoesMarcadas.filter(item => item !== situacao))
-    } else {
-      setSituacoesMarcadas([...situacoesMarcadas, situacao])
+    if (demandaExiste) {
+      setDemandaPrincipal(demandaSalva);
+      setOutraDemanda("");
+    } else if (demandaSalva) {
+      setDemandaPrincipal("Outra necessidade");
+      setOutraDemanda(demandaSalva);
     }
-  }
+
+    const situacoesConhecidas = dados
+      .slice(1)
+      .filter((item) => SITUACOES_SOCIAIS.includes(item));
+
+    const situacoesAbertas = dados
+      .slice(1)
+      .filter((item) => item.startsWith("Outra situação informada:"))
+      .map((item) => item.replace("Outra situação informada:", "").trim())
+      .join("\n");
+
+    setSituacoesMarcadas(situacoesConhecidas);
+    setOutraSituacaoAtiva(Boolean(situacoesAbertas));
+    setOutrasSituacoes(situacoesAbertas);
+    setUrgencia(caso.duracao || "baixa");
+
+    setTelefone(extrairCampoDoResumo(caso.detalhes, "Telefone para contato"));
+    setIdade(extrairCampoDoResumo(caso.detalhes, "Idade"));
+    setCartaoSus(extrairCampoDoResumo(caso.detalhes, "Cartão SUS/NIS"));
+
+    setBairroLocalidade(
+      extrairCampoDoResumo(caso.detalhes, "Bairro/localidade") ||
+        extrairCampoDoResumo(caso.detalhes, "Endereço/bairro"),
+    );
+
+    setPontoReferencia(
+      extrairCampoDoResumo(caso.detalhes, "Ponto de referência"),
+    );
+
+    setTerritorioCras(
+      extrairCampoDoResumo(caso.detalhes, "Território/CRAS") ||
+        extrairCampoDoResumo(caso.detalhes, "Território/CRAS de referência"),
+    );
+
+    setComposicaoFamiliar(
+      extrairCampoDoResumo(caso.detalhes, "Composição familiar"),
+    );
+
+    setRendaFamiliar(
+      extrairCampoDoResumo(caso.detalhes, "Renda familiar") ||
+        extrairCampoDoResumo(caso.detalhes, "Renda familiar aproximada"),
+    );
+    const beneficiosTexto = extrairCampoDoResumo(
+      caso.detalhes,
+      "Benefícios sociais",
+    );
+
+    const beneficiosSalvos = beneficiosTexto
+      ? beneficiosTexto
+          .split(",")
+          .map((item) => item.trim())
+          .filter(Boolean)
+      : [];
+
+    setBeneficios(
+      beneficiosSalvos.filter((item) => BENEFICIOS_SOCIAIS.includes(item)),
+    );
+
+    setOutrosBeneficios(
+      extrairCampoDoResumo(caso.detalhes, "Outros benefícios"),
+    );
+
+    setDetalhes(extrairDescricaoDoResumo(caso.detalhes));
+  };
+
+  const obterDemandaFinal = () => {
+    if (demandaPrincipal === "Outra necessidade") {
+      return outraDemanda.trim();
+    }
+
+    return demandaPrincipal;
+  };
+
+  const obterSituacoesFinais = () => {
+    const abertas =
+      outraSituacaoAtiva && outrasSituacoes.trim()
+        ? [`Outra situação informada: ${outrasSituacoes.trim()}`]
+        : [];
+
+    return [...situacoesMarcadas, ...abertas];
+  };
+
+  const alternarSituacao = (situacao) => {
+    setSituacoesMarcadas((atuais) => {
+      if (atuais.includes(situacao)) {
+        return atuais.filter((item) => item !== situacao);
+      }
+
+      return [...atuais, situacao];
+    });
+  };
+
+  const alternarBeneficio = (beneficio) => {
+    setBeneficios((atuais) => {
+      if (beneficio === "Nenhum" || beneficio === "Não sei informar") {
+        return atuais.includes(beneficio) ? [] : [beneficio];
+      }
+
+      const semExcludentes = atuais.filter(
+        (item) => item !== "Nenhum" && item !== "Não sei informar",
+      );
+
+      if (semExcludentes.includes(beneficio)) {
+        return semExcludentes.filter((item) => item !== beneficio);
+      }
+
+      return [...semExcludentes, beneficio];
+    });
+  };
 
   const calcularPontuacaoRisco = () => {
-    let pontos = 0
+    let pontos = 0;
+    const demandaFinal = obterDemandaFinal();
 
-    if (demandaPrincipal === 'Violência ou ameaça') pontos += 50
-    if (demandaPrincipal === 'Falta de alimento') pontos += 40
-    if (demandaPrincipal === 'Moradia ou risco de despejo') pontos += 35
-    if (demandaPrincipal === 'Criança, adolescente, idoso ou PCD em risco') pontos += 35
-    if (demandaPrincipal === 'Benefícios sociais') pontos += 20
-    if (demandaPrincipal === 'Documentação') pontos += 10
-    if (demandaPrincipal === 'Orientação social') pontos += 5
+    if (demandaFinal === "Violência ou ameaça") pontos += 50;
+    if (demandaFinal === "Alimentação") pontos += 40;
+    if (demandaFinal === "Falta de alimento") pontos += 40;
+    if (demandaFinal === "Moradia ou risco de despejo") pontos += 35;
 
-    if (situacoesMarcadas.includes('Há risco de violência doméstica ou familiar')) pontos += 50
-    if (situacoesMarcadas.includes('A família está sem alimento no momento')) pontos += 40
-    if (situacoesMarcadas.includes('Há criança ou adolescente em situação de risco')) pontos += 35
-    if (situacoesMarcadas.includes('Há idoso ou pessoa com deficiência em situação de risco')) pontos += 35
-    if (situacoesMarcadas.includes('A família está sem moradia ou em risco de despejo')) pontos += 35
-    if (situacoesMarcadas.includes('Há pessoa doente sem acompanhamento ou medicação')) pontos += 25
-    if (situacoesMarcadas.includes('A família está sem renda')) pontos += 20
-    if (situacoesMarcadas.includes('Precisa atualizar CadÚnico ou benefício social')) pontos += 10
-    if (situacoesMarcadas.includes('Precisa de orientação sobre documentação')) pontos += 5
-
-    if (urgencia === 'alta') pontos += 30
-    if (urgencia === 'media') pontos += 15
-
-    return pontos
-  }
-
-  const calcularPrioridade = () => {
-    const pontos = calcularPontuacaoRisco()
-
-    if (pontos >= 70) return 'ALTA'
-    if (pontos >= 30) return 'MÉDIA'
-    return 'BAIXA'
-  }
-
-  const montarResumoDoCaso = () => {
-    const pontuacao = calcularPontuacaoRisco()
-
-    return `
-Demanda principal: ${demandaPrincipal}
-Nível de urgência informado: ${urgencia}
-Pontuação de risco social: ${pontuacao}
-
-Telefone para contato: ${telefone || 'Não informado'}
-Endereço/bairro: ${endereco || 'Não informado'}
-Cartão SUS/NIS: ${cartaoSus || 'Não informado'}
-Composição familiar: ${composicaoFamiliar || 'Não informado'}
-Renda familiar aproximada: ${rendaFamiliar || 'Não informado'}
-
-Situações marcadas:
-${situacoesMarcadas.length > 0 ? situacoesMarcadas.map(item => `- ${item}`).join('\n') : '- Nenhuma situação específica marcada'}
-
-Descrição do cidadão:
-${detalhes || 'Não informado'}
-    `.trim()
-  }
-
-  const lidarComEnvio = async (e) => {
-    e.preventDefault()
-    setEnviando(true)
-
-    const { data: { user } } = await supabase.auth.getUser()
-
-    if (!user) {
-      alert('Você precisa estar logado para enviar uma solicitação.')
-      setEnviando(false)
-      navigate('/')
-      return
+    if (demandaFinal === "Criança, adolescente, idoso ou PCD em risco") {
+      pontos += 35;
     }
 
-    const prioridadeCalculada = calcularPrioridade()
-    const resumoDoCaso = montarResumoDoCaso()
+    if (demandaFinal === "Saúde e medicação") pontos += 25;
+    if (demandaFinal === "Benefícios sociais") pontos += 20;
+    if (demandaFinal === "Documentação") pontos += 10;
+    if (demandaFinal === "Orientação social") pontos += 5;
+    if (demandaPrincipal === "Outra necessidade") pontos += 10;
+
+    if (situacoesMarcadas.includes("Risco de violência")) pontos += 50;
+    if (situacoesMarcadas.includes("Falta de alimento")) pontos += 40;
+
+    if (situacoesMarcadas.includes("Criança ou adolescente em risco")) {
+      pontos += 35;
+    }
+
+    if (situacoesMarcadas.includes("Idoso ou PCD em risco")) pontos += 35;
+
+    if (situacoesMarcadas.includes("Sem moradia ou risco de despejo")) {
+      pontos += 35;
+    }
+
+    if (situacoesMarcadas.includes("Pessoa doente sem acompanhamento")) {
+      pontos += 25;
+    }
+
+    if (situacoesMarcadas.includes("Família sem renda")) pontos += 20;
+
+    if (situacoesMarcadas.includes("Benefício bloqueado ou pendente")) {
+      pontos += 10;
+    }
+
+    if (situacoesMarcadas.includes("Documentação pendente")) pontos += 5;
+    if (outraSituacaoAtiva && outrasSituacoes.trim()) pontos += 10;
+
+    if (urgencia === "alta") pontos += 30;
+    if (urgencia === "media") pontos += 15;
+
+    return pontos;
+  };
+
+  const calcularPrioridade = () => {
+    const pontos = calcularPontuacaoRisco();
+
+    if (pontos >= 70) return "ALTA";
+    if (pontos >= 30) return "MÉDIA";
+
+    return "BAIXA";
+  };
+
+  const montarResumoDoCaso = () => {
+    const pontuacao = calcularPontuacaoRisco();
+    const demandaFinal = obterDemandaFinal();
+    const situacoesFinais = obterSituacoesFinais();
+
+    return `
+Demanda principal: ${demandaFinal}
+Nível de urgência informado: ${urgencia}
+Pontuação de risco social: ${pontuacao}
+Telefone para contato: ${telefone || "Não informado"}
+Idade: ${idade || "Não informado"}
+Cartão SUS/NIS: ${cartaoSus || "Não informado"}
+Bairro/localidade: ${bairroLocalidade || "Não informado"}
+Ponto de referência: ${pontoReferencia || "Não informado"}
+Território/CRAS: ${territorioCras || "Não informado"}
+Composição familiar: ${composicaoFamiliar || "Não informado"}
+Renda familiar: ${rendaFamiliar || "Não informado"}
+Benefícios sociais: ${
+      beneficios.length > 0 ? beneficios.join(", ") : "Não informado"
+    }
+Outros benefícios: ${outrosBeneficios || "Não informado"}
+Situações marcadas:
+${
+  situacoesFinais.length > 0
+    ? situacoesFinais.map((item) => `- ${item}`).join("\n")
+    : "- Nenhuma situação específica marcada"
+}
+Descrição do cidadão:
+${detalhes || "Não informado"}
+`.trim();
+  };
+  const formularioValido = Boolean(
+    obterDemandaFinal() &&
+      telefone.trim() &&
+      bairroLocalidade.trim() &&
+      detalhes.trim(),
+  );
+
+  const etapaValida = () => {
+    if (etapaAtual === 0) {
+      return Boolean(telefone.trim() && bairroLocalidade.trim());
+    }
+
+    if (etapaAtual === 2) {
+      return Boolean(obterDemandaFinal());
+    }
+
+    if (etapaAtual === 4) {
+      return Boolean(detalhes.trim());
+    }
+
+    return true;
+  };
+
+  const avancar = () => {
+    if (!etapaValida()) return;
+
+    setEtapaAtual((atual) => Math.min(atual + 1, ETAPAS.length - 1));
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const voltar = () => {
+    setEtapaAtual((atual) => Math.max(atual - 1, 0));
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const lidarComEnvio = async (e) => {
+    e.preventDefault();
+
+    if (!formularioValido) return;
+
+    setEnviando(true);
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      setEnviando(false);
+      navigate("/");
+      return;
+    }
+
+    const prioridadeCalculada = calcularPrioridade();
+    const resumoDoCaso = montarResumoDoCaso();
 
     const dadosSociais = [
-      demandaPrincipal,
-      ...situacoesMarcadas,
-    ].filter(Boolean)
+      obterDemandaFinal(),
+      ...obterSituacoesFinais(),
+    ].filter(Boolean);
 
     if (modoEdicao && casoExistente) {
       const { error } = await supabase
-        .from('triagens')
+        .from("triagens")
         .update({
           paciente_nome: cidadaoNome,
           sintomas: dadosSociais,
@@ -217,258 +809,531 @@ ${detalhes || 'Não informado'}
           detalhes: resumoDoCaso,
           prioridade: prioridadeCalculada,
         })
-        .eq('id', casoExistente.id)
+        .eq("id", casoExistente.id);
 
-      setEnviando(false)
+      setEnviando(false);
 
       if (error) {
-        alert('Erro ao atualizar acolhimento: ' + error.message)
-        return
+        alert("Erro ao atualizar acolhimento: " + error.message);
+        return;
       }
 
-      alert('Acolhimento atualizado com sucesso.')
-      navigate('/acompanhamento')
-      return
+      navigate("/acompanhamento");
+      return;
     }
 
     const { data: solicitacaoExistente, error: erroBusca } = await supabase
-      .from('triagens')
-      .select('id, status')
-      .eq('user_id', user.id)
-      .in('status', ['pendente', 'em_atendimento', 'em_acompanhamento'])
-      .order('created_at', { ascending: false })
+      .from("triagens")
+      .select("id, status")
+      .eq("user_id", user.id)
+      .in("status", ["pendente", "em_atendimento", "em_acompanhamento"])
+      .order("created_at", { ascending: false })
       .limit(1)
-      .maybeSingle()
+      .maybeSingle();
 
     if (erroBusca) {
-      alert('Erro ao verificar solicitação existente: ' + erroBusca.message)
-      setEnviando(false)
-      return
+      setEnviando(false);
+      alert("Erro ao verificar solicitação existente: " + erroBusca.message);
+      return;
     }
 
     if (solicitacaoExistente) {
-      alert('Você já possui um caso social em andamento. Vamos te levar para o acompanhamento.')
-      setEnviando(false)
-      navigate('/acompanhamento')
-      return
+      setEnviando(false);
+      navigate("/acompanhamento");
+      return;
     }
 
-    const { error } = await supabase
-      .from('triagens')
-      .insert([
-        {
-          user_id: user.id,
-          paciente_nome: cidadaoNome,
-          sintomas: dadosSociais,
-          duracao: urgencia,
-          detalhes: resumoDoCaso,
-          prioridade: prioridadeCalculada,
-          status: 'pendente',
-        }
-      ])
+    const { error } = await supabase.from("triagens").insert([
+      {
+        user_id: user.id,
+        paciente_nome: cidadaoNome,
+        sintomas: dadosSociais,
+        duracao: urgencia,
+        detalhes: resumoDoCaso,
+        prioridade: prioridadeCalculada,
+        status: "pendente",
+      },
+    ]);
 
-    setEnviando(false)
+    setEnviando(false);
 
     if (error) {
-      alert('Erro ao enviar solicitação: ' + error.message)
-    } else {
-      navigate('/acompanhamento')
+      alert("Erro ao enviar solicitação: " + error.message);
+      return;
     }
-  }
 
-  if (carregando) {
-    return (
-      <div className="min-h-screen bg-[#0d1f1a] flex items-center justify-center px-6 py-10 font-sans">
-        <div className="text-center animate-fadeUp">
-          <div className="w-12 h-12 border-2 border-[#2a6b52] border-t-[#4ab882] rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-[#5a8a72] text-sm">Carregando acolhimento...</p>
+    navigate("/acompanhamento");
+  };
+  const renderEtapa = () => {
+    if (etapaAtual === 0) {
+      return (
+        <div className="grid md:grid-cols-2 gap-5">
+          <CampoTexto
+            label="Telefone"
+            value={telefone}
+            onChange={setTelefone}
+            Icone={Phone}
+            required
+          />
+
+          <CampoTexto
+            label="Idade"
+            value={idade}
+            onChange={setIdade}
+            Icone={User}
+            type="number"
+          />
+
+          <CampoTexto
+            label="Bairro ou localidade"
+            value={bairroLocalidade}
+            onChange={setBairroLocalidade}
+            Icone={MapPin}
+            required
+          />
+
+          <CampoTexto
+            label="Ponto de referência"
+            value={pontoReferencia}
+            onChange={setPontoReferencia}
+            Icone={MapPin}
+          />
+
+          <CampoTexto
+            label="Território ou CRAS"
+            value={territorioCras}
+            onChange={setTerritorioCras}
+            Icone={Shield}
+          />
+
+          <CampoTexto
+            label="SUS ou NIS"
+            value={cartaoSus}
+            onChange={setCartaoSus}
+            Icone={CreditCard}
+          />
         </div>
-      </div>
-    )
-  }
+      );
+    }
 
-  return (
-    <div className="min-h-screen bg-[#0d1f1a] flex items-center justify-center px-6 py-10 font-sans">
-      <div className="w-full max-w-3xl animate-fadeUp">
-        <div className="text-center mb-8">
-          <h1 className="text-[#e8f0ec] text-2xl font-semibold tracking-tight" style={{fontFamily:'Georgia, serif'}}>
-            {modoEdicao ? 'Editar Acolhimento Social' : 'Acolhimento Social'}
-          </h1>
-          <p className="text-[#4ab882] text-sm mt-1 font-medium">
-            Cidadão: {cidadaoNome}
-          </p>
-          <p className="text-[#5a8a72] text-sm mt-3 font-light max-w-2xl mx-auto">
-            {modoEdicao
-              ? 'Atualize as informações do seu caso para manter a equipe de assistência social informada.'
-              : 'Preencha as informações abaixo para que a equipe de assistência social possa entender a situação e organizar o atendimento.'}
-          </p>
-        </div>
-
-        <form onSubmit={lidarComEnvio} className="bg-[#111f1a] border border-[#1e3b2e] rounded-2xl p-8">
-          <div className="mb-6">
-            <label className="block text-[#5a8a72] text-xs uppercase tracking-wider mb-2 font-medium">
-              Demanda principal
-            </label>
-            <select
-              required
-              value={demandaPrincipal}
-              onChange={(e) => setDemandaPrincipal(e.target.value)}
-              className="w-full bg-[#0d1f1a] border border-[#1e3b2e] rounded-xl px-4 py-3 text-[#c8e0d4] text-sm outline-none focus:border-[#2a9162] transition-colors"
-            >
-              <option value="">Selecione a principal necessidade</option>
-              <option value="Violência ou ameaça">Violência ou ameaça</option>
-              <option value="Falta de alimento">Falta de alimento</option>
-              <option value="Moradia ou risco de despejo">Moradia ou risco de despejo</option>
-              <option value="Criança, adolescente, idoso ou PCD em risco">Criança, adolescente, idoso ou PCD em risco</option>
-              <option value="Benefícios sociais">Benefícios sociais</option>
-              <option value="Documentação">Documentação</option>
-              <option value="Orientação social">Orientação social</option>
-            </select>
-          </div>
-
-          <div className="grid md:grid-cols-2 gap-4 mb-6">
-            <div>
-              <label className="block text-[#5a8a72] text-xs uppercase tracking-wider mb-2 font-medium">
-                Telefone para contato
-              </label>
-              <input
-                type="text"
-                value={telefone}
-                onChange={(e) => setTelefone(e.target.value)}
-                placeholder="(00) 00000-0000"
-                className="w-full bg-[#0d1f1a] border border-[#1e3b2e] rounded-xl px-4 py-3 text-[#c8e0d4] text-sm outline-none focus:border-[#2a9162]"
-              />
-            </div>
-
-            <div>
-              <label className="block text-[#5a8a72] text-xs uppercase tracking-wider mb-2 font-medium">
-                Cartão SUS ou NIS
-              </label>
-              <input
-                type="text"
-                value={cartaoSus}
-                onChange={(e) => setCartaoSus(e.target.value)}
-                placeholder="Opcional neste protótipo"
-                className="w-full bg-[#0d1f1a] border border-[#1e3b2e] rounded-xl px-4 py-3 text-[#c8e0d4] text-sm outline-none focus:border-[#2a9162]"
-              />
-            </div>
-          </div>
-
-          <div className="mb-6">
-            <label className="block text-[#5a8a72] text-xs uppercase tracking-wider mb-2 font-medium">
-              Endereço ou bairro de referência
-            </label>
-            <input
-              type="text"
-              value={endereco}
-              onChange={(e) => setEndereco(e.target.value)}
-              placeholder="Ex: Rua, bairro, ponto de referência ou território do CRAS"
-              className="w-full bg-[#0d1f1a] border border-[#1e3b2e] rounded-xl px-4 py-3 text-[#c8e0d4] text-sm outline-none focus:border-[#2a9162]"
+    if (etapaAtual === 1) {
+      return (
+        <div className="space-y-7">
+          <div className="grid md:grid-cols-2 gap-5">
+            <CampoTexto
+              label="Composição familiar"
+              value={composicaoFamiliar}
+              onChange={setComposicaoFamiliar}
+              Icone={Users}
             />
-          </div>
 
-          <div className="grid md:grid-cols-2 gap-4 mb-6">
-            <div>
-              <label className="block text-[#5a8a72] text-xs uppercase tracking-wider mb-2 font-medium">
-                Composição familiar
-              </label>
-              <input
-                type="text"
-                value={composicaoFamiliar}
-                onChange={(e) => setComposicaoFamiliar(e.target.value)}
-                placeholder="Ex: 2 adultos e 3 crianças"
-                className="w-full bg-[#0d1f1a] border border-[#1e3b2e] rounded-xl px-4 py-3 text-[#c8e0d4] text-sm outline-none focus:border-[#2a9162]"
-              />
-            </div>
-
-            <div>
-              <label className="block text-[#5a8a72] text-xs uppercase tracking-wider mb-2 font-medium">
-                Renda familiar aproximada
-              </label>
-              <input
-                type="text"
-                value={rendaFamiliar}
-                onChange={(e) => setRendaFamiliar(e.target.value)}
-                placeholder="Ex: Sem renda, até 1 salário mínimo..."
-                className="w-full bg-[#0d1f1a] border border-[#1e3b2e] rounded-xl px-4 py-3 text-[#c8e0d4] text-sm outline-none focus:border-[#2a9162]"
-              />
-            </div>
-          </div>
-
-          <div className="mb-6">
-            <label className="block text-[#5a8a72] text-xs uppercase tracking-wider mb-2 font-medium">
-              Urgência percebida
-            </label>
-            <select
-              value={urgencia}
-              onChange={(e) => setUrgencia(e.target.value)}
-              className="w-full bg-[#0d1f1a] border border-[#1e3b2e] rounded-xl px-4 py-3 text-[#c8e0d4] text-sm outline-none focus:border-[#2a9162] transition-colors"
+            <CampoSelect
+              label="Renda familiar"
+              value={rendaFamiliar}
+              onChange={setRendaFamiliar}
+              Icone={DollarSign}
             >
-              <option value="baixa">Baixa — posso aguardar atendimento</option>
-              <option value="media">Média — preciso de orientação em breve</option>
-              <option value="alta">Alta — existe risco ou necessidade urgente</option>
-            </select>
+              {FAIXAS_RENDA.map((faixa) => (
+                <option key={faixa || "vazio"} value={faixa}>
+                  {faixa || "Selecione"}
+                </option>
+              ))}
+            </CampoSelect>
           </div>
 
-          <div className="mb-6">
-            <label className="block text-[#5a8a72] text-xs uppercase tracking-wider mb-3 font-medium">
-              Situações identificadas
-            </label>
-            <div className="grid md:grid-cols-2 gap-3">
-              {situacoesSociais.map((situacao) => (
-                <label
-                  key={situacao}
-                  className="flex items-start gap-2 text-[#c8e0d4] text-sm cursor-pointer p-3 rounded-lg border border-[#1a3330] hover:bg-[#152b24] transition-colors"
+          <div>
+            <p className="text-[#8FB5A4] text-[11px] font-bold uppercase tracking-[0.18em] mb-3">
+              Benefícios sociais
+            </p>
+
+            <div className="grid sm:grid-cols-2 gap-3">
+              {BENEFICIOS_SOCIAIS.map((beneficio) => (
+                <BotaoSelecao
+                  key={beneficio}
+                  selecionado={beneficios.includes(beneficio)}
+                  onClick={() => alternarBeneficio(beneficio)}
                 >
-                  <input
-                    type="checkbox"
-                    className="accent-[#2a9162] w-4 h-4 mt-0.5 cursor-pointer"
-                    checked={situacoesMarcadas.includes(situacao)}
-                    onChange={() => lidarComSituacao(situacao)}
-                  />
-                  <span>{situacao}</span>
-                </label>
+                  {beneficio}
+                </BotaoSelecao>
+              ))}
+            </div>
+
+            {beneficios.includes("Outro") && (
+              <div className="mt-5">
+                <CampoTexto
+                  label="Outro benefício"
+                  value={outrosBeneficios}
+                  onChange={setOutrosBeneficios}
+                  Icone={FileText}
+                />
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    if (etapaAtual === 2) {
+      return (
+        <div>
+          <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
+            {DEMANDAS_PRINCIPAIS.map((demanda) => (
+              <CartaoOpcao
+                key={demanda.valor}
+                titulo={demanda.titulo}
+                Icone={demanda.Icone}
+                selecionado={demandaPrincipal === demanda.valor}
+                onClick={() => setDemandaPrincipal(demanda.valor)}
+              />
+            ))}
+          </div>
+
+          {demandaPrincipal === "Outra necessidade" && (
+            <div className="mt-5">
+              <CampoTexto
+                label="Outra necessidade"
+                value={outraDemanda}
+                onChange={setOutraDemanda}
+                Icone={FileText}
+                required
+              />
+            </div>
+          )}
+        </div>
+      );
+    }
+    if (etapaAtual === 3) {
+      return (
+        <div className="space-y-7">
+          <div>
+            <p className="text-[#8FB5A4] text-[11px] font-bold uppercase tracking-[0.18em] mb-3">
+              Situação neste momento
+            </p>
+
+            <div className="grid md:grid-cols-3 gap-3">
+              {[
+                ["baixa", "Posso aguardar"],
+                ["media", "Retorno breve"],
+                ["alta", "Atenção imediata"],
+              ].map(([valor, titulo]) => (
+                <button
+                  key={valor}
+                  type="button"
+                  onClick={() => setUrgencia(valor)}
+                  className={`rounded-2xl border p-4 text-center text-sm font-black transition-all ${
+                    urgencia === valor
+                      ? "border-[#4ade80]/70 bg-[#4ade80]/12 text-white"
+                      : "border-[#1B3A30] bg-[#07110E] text-[#8FB5A4] hover:border-[#2E5D4E]"
+                  }`}
+                >
+                  {titulo}
+                </button>
               ))}
             </div>
           </div>
 
-          <div className="mb-8">
-            <label className="block text-[#5a8a72] text-xs uppercase tracking-wider mb-2 font-medium">
-              Descrição da situação
-            </label>
-            <textarea
-              rows="5"
-              required
-              value={detalhes}
-              onChange={(e) => setDetalhes(e.target.value)}
-              placeholder="Conte, com suas palavras, o que está acontecendo e qual apoio você precisa neste momento."
-              className="w-full bg-[#0d1f1a] border border-[#1e3b2e] rounded-xl px-4 py-3 text-[#c8e0d4] text-sm outline-none focus:border-[#2a9162] resize-none"
-            ></textarea>
+          <div>
+            <p className="text-[#8FB5A4] text-[11px] font-bold uppercase tracking-[0.18em] mb-3">
+              Situações identificadas
+            </p>
+
+            <div className="grid md:grid-cols-2 gap-3">
+              {SITUACOES_SOCIAIS.map((situacao) => (
+                <BotaoSelecao
+                  key={situacao}
+                  selecionado={situacoesMarcadas.includes(situacao)}
+                  onClick={() => alternarSituacao(situacao)}
+                >
+                  {situacao}
+                </BotaoSelecao>
+              ))}
+
+              <BotaoSelecao
+                selecionado={outraSituacaoAtiva}
+                onClick={() => setOutraSituacaoAtiva((atual) => !atual)}
+              >
+                Outra situação
+              </BotaoSelecao>
+            </div>
+
+            {outraSituacaoAtiva && (
+              <div className="mt-5">
+                <CampoTexto
+                  label="Outra situação"
+                  value={outrasSituacoes}
+                  onChange={setOutrasSituacoes}
+                  Icone={FileText}
+                  textarea
+                  rows={3}
+                />
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-7">
+        <CampoTexto
+          label="Relato da situação"
+          value={detalhes}
+          onChange={setDetalhes}
+          Icone={FileText}
+          required
+          textarea
+          rows={9}
+        />
+
+        <div className="rounded-3xl border border-[#1B3A30] bg-[#07110E] p-5">
+          <p className="text-[#8FB5A4] text-[11px] uppercase tracking-[0.18em] font-bold mb-4">
+            Revisão
+          </p>
+
+          <div className="grid sm:grid-cols-2 gap-4 text-sm">
+            <div>
+              <p className="text-[#8FB5A4] text-xs mb-1">Motivo</p>
+              <p className="text-white font-bold">
+                {obterDemandaFinal() || "Não informado"}
+              </p>
+            </div>
+
+            <div>
+              <p className="text-[#8FB5A4] text-xs mb-1">Contato</p>
+              <p className="text-white font-bold">
+                {telefone || "Não informado"}
+              </p>
+            </div>
+
+            <div>
+              <p className="text-[#8FB5A4] text-xs mb-1">Localidade</p>
+              <p className="text-white font-bold">
+                {bairroLocalidade || "Não informado"}
+              </p>
+            </div>
+
+            <div>
+              <p className="text-[#8FB5A4] text-xs mb-1">Situações</p>
+              <p className="text-white font-bold">
+                {obterSituacoesFinais().length}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+  if (carregando) {
+    return (
+      <div className="min-h-screen bg-[#06100C] flex items-center justify-center font-sans">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-10 h-10 border-2 border-[#1B3A30] border-t-[#4ade80] rounded-full animate-spin" />
+
+          <p className="text-[#8FB5A4] text-sm font-medium tracking-wide">
+            Carregando acolhimento...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (casoExistente && !modoEdicao) {
+    return (
+      <div className="min-h-screen bg-[#06100C] flex items-center justify-center px-6 py-10 font-sans">
+        <div className="w-full max-w-md bg-[#0D1D18] border border-[#1B3A30] rounded-[2rem] p-8 text-center shadow-2xl">
+          <div className="w-14 h-14 rounded-2xl bg-[#4ade80] text-[#06100C] flex items-center justify-center mx-auto mb-5">
+            <CheckCircle size={24} />
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-3">
-            <button
-              type="submit"
-              disabled={enviando || !demandaPrincipal || !detalhes}
-              className="flex-1 bg-[#1e7a52] hover:bg-[#22905f] disabled:bg-[#1a3330] disabled:text-[#4a7a60] text-[#e8f5ee] py-3.5 rounded-xl text-sm font-medium transition-all shadow-lg"
-            >
-              {enviando
-                ? (modoEdicao ? 'Salvando alterações...' : 'Enviando solicitação...')
-                : (modoEdicao ? 'Salvar alterações' : 'Enviar para Acolhimento Social')}
-            </button>
+          <p className="text-[#4ade80] text-[10px] uppercase tracking-[0.2em] font-black mb-2">
+            Plataforma EloSocial
+          </p>
 
+          <h1 className="text-white text-2xl font-black mb-3">
+            Acompanhamento ativo
+          </h1>
+
+          <p className="text-[#8FB5A4] text-sm leading-relaxed mb-7">
+            Você já possui um caso social em andamento.
+          </p>
+
+          <button
+            type="button"
+            onClick={() => navigate("/acompanhamento")}
+            className="w-full bg-[#4ade80] text-[#06100C] hover:bg-[#22c55e] py-3.5 rounded-2xl text-sm font-black transition-all"
+          >
+            Ir para acompanhamento
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const demandaFinal = obterDemandaFinal();
+  const situacoesFinais = obterSituacoesFinais();
+  const etapa = ETAPAS[etapaAtual];
+  const IconeEtapa = etapa.Icone;
+
+  return (
+    <div className="min-h-screen bg-[#06100C] text-slate-200 font-sans selection:bg-[#4ade80]/30">
+      <div className="fixed inset-0 pointer-events-none overflow-hidden">
+        <div className="absolute top-[-12rem] right-[-10rem] w-[32rem] h-[32rem] rounded-full bg-[#4ade80]/10 blur-3xl" />
+        <div className="absolute bottom-[-14rem] left-[-12rem] w-[36rem] h-[36rem] rounded-full bg-emerald-300/5 blur-3xl" />
+      </div>
+
+      <header className="relative z-10 border-b border-[#1B3A30]/80 bg-[#06100C]/75 backdrop-blur-xl px-6 py-4">
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
             {modoEdicao && (
               <button
                 type="button"
-                onClick={() => navigate('/acompanhamento')}
-                className="border border-[#2a6b52] text-[#4ab882] py-3.5 px-5 rounded-xl text-sm font-medium hover:bg-[#1a3d30] transition-all"
+                onClick={() => navigate("/acompanhamento")}
+                className="p-2 -ml-2 rounded-xl text-[#8FB5A4] hover:text-white hover:bg-[#0D1D18] transition-colors"
               >
-                Cancelar
+                <ArrowLeft size={20} />
               </button>
             )}
+
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-[#4ade80] text-[#06100C] flex items-center justify-center shadow-[0_0_30px_rgba(74,222,128,0.18)]">
+                <HeartHandshake size={21} />
+              </div>
+
+              <div>
+                <p className="text-[#4ade80] text-[10px] uppercase tracking-[0.22em] font-black mb-0.5">
+                  Plataforma EloSocial
+                </p>
+
+                <h1 className="text-xl font-black tracking-tight text-white">
+                  {modoEdicao ? "Editar acolhimento" : "Acolhimento social"}
+                </h1>
+              </div>
+            </div>
           </div>
-        </form>
-      </div>
+
+          <div className="flex items-center gap-2 border border-[#1B3A30] bg-[#0D1D18] rounded-2xl px-4 py-2.5">
+            <User size={16} className="text-[#4ade80]" />
+            <p className="text-[#E8F5EE] text-sm font-bold">{cidadaoNome}</p>
+          </div>
+        </div>
+      </header>
+      <form onSubmit={lidarComEnvio} className="relative z-10">
+        <main className="max-w-7xl mx-auto p-6 grid lg:grid-cols-12 gap-6 items-start">
+          <div className="lg:col-span-8">
+            <section className="relative overflow-hidden rounded-[2rem] border border-[#1B3A30] bg-[#0D1D18] p-7 md:p-9 shadow-2xl mb-6">
+              <div className="absolute -top-24 -right-24 w-64 h-64 rounded-full bg-[#4ade80]/10 blur-3xl" />
+
+              <div className="relative flex flex-col md:flex-row md:items-end md:justify-between gap-6">
+                <div>
+                  <div className="inline-flex items-center gap-2 rounded-full border border-[#1B3A30] bg-[#07110E] px-3 py-1.5 mb-5">
+                    <Lock size={13} className="text-[#4ade80]" />
+
+                    <span className="text-[#8FB5A4] text-xs font-bold">
+                      Informações protegidas
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-12 h-12 rounded-2xl bg-[#10251E] text-[#4ade80] flex items-center justify-center">
+                      <IconeEtapa size={22} />
+                    </div>
+
+                    <div>
+                      <p className="text-[#4ade80] text-[10px] uppercase tracking-[0.22em] font-black mb-1">
+                        Etapa {etapaAtual + 1} de {ETAPAS.length}
+                      </p>
+
+                      <h2 className="text-white text-3xl md:text-4xl font-black tracking-tight">
+                        {etapa.titulo}
+                      </h2>
+                    </div>
+                  </div>
+
+                  <p className="text-[#B7D2C6] text-sm md:text-base leading-relaxed max-w-2xl">
+                    {etapa.subtitulo}
+                  </p>
+                </div>
+
+                <div className="w-full md:w-48">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[#8FB5A4] text-xs font-bold">
+                      Progresso
+                    </span>
+
+                    <span className="text-[#4ade80] text-xs font-black">
+                      {Math.round(((etapaAtual + 1) / ETAPAS.length) * 100)}%
+                    </span>
+                  </div>
+
+                  <div className="h-2 bg-[#183429] rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-[#4ade80] rounded-full transition-all duration-300"
+                      style={{
+                        width: `${((etapaAtual + 1) / ETAPAS.length) * 100}%`,
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <section className="rounded-[2rem] border border-[#1B3A30] bg-[#0D1D18]/95 p-6 md:p-8 shadow-2xl">
+              {renderEtapa()}
+            </section>
+
+            <div className="flex flex-col sm:flex-row gap-3 mt-6">
+              <button
+                type="button"
+                onClick={voltar}
+                disabled={etapaAtual === 0}
+                className="sm:w-40 flex items-center justify-center gap-2 border border-[#1B3A30] text-[#8FB5A4] bg-[#07110E] hover:text-white hover:border-[#2E5D4E] disabled:opacity-40 py-3.5 rounded-2xl text-sm font-bold transition-all"
+              >
+                <ChevronLeft size={16} />
+                Voltar
+              </button>
+
+              {etapaAtual < ETAPAS.length - 1 ? (
+                <button
+                  type="button"
+                  onClick={avancar}
+                  disabled={!etapaValida()}
+                  className="flex-1 flex items-center justify-center gap-2 bg-[#4ade80] text-[#06100C] hover:bg-[#22c55e] disabled:bg-[#183429] disabled:text-[#6B8F7F] py-3.5 rounded-2xl text-sm font-black transition-all"
+                >
+                  Continuar
+                  <ChevronRight size={16} />
+                </button>
+              ) : (
+                <button
+                  type="submit"
+                  disabled={enviando || !formularioValido}
+                  className="flex-1 flex items-center justify-center gap-2 bg-[#4ade80] text-[#06100C] hover:bg-[#22c55e] disabled:bg-[#183429] disabled:text-[#6B8F7F] py-3.5 rounded-2xl text-sm font-black transition-all"
+                >
+                  {enviando ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin" />
+                      Enviando
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle size={16} />
+                      {modoEdicao ? "Salvar alterações" : "Enviar acolhimento"}
+                    </>
+                  )}
+                </button>
+              )}
+            </div>
+          </div>
+
+          <PainelLateral
+            etapaAtual={etapaAtual}
+            demandaFinal={demandaFinal}
+            urgencia={urgencia}
+            situacoesCount={situacoesFinais.length}
+            formularioValido={formularioValido}
+            cidadaoNome={cidadaoNome}
+          />
+        </main>
+      </form>
     </div>
-  )
+  );
 }

@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
+import { Mail, Lock, Loader2, HeartHandshake, ArrowRight, ShieldCheck } from 'lucide-react'
 
 export default function Login() {
   const navigate = useNavigate()
@@ -51,46 +52,125 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0d1f1a] flex items-center justify-center px-6 py-10 font-sans">
-      <div className="w-full max-w-sm animate-fadeUp">
-        <div className="text-center mb-10">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl border border-[#2a6b52] bg-[#1a3d30] mb-4">
-            <svg className="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="#4ab882" strokeWidth="1.5" strokeLinecap="round">
-              <path d="M12 2a10 10 0 1 0 0 20A10 10 0 0 0 12 2z"/>
-              <path d="M8 12h8M12 8v8"/>
-            </svg>
+    <div className="min-h-screen flex font-sans selection:bg-[#4ade80]/30 bg-[#050A08]">
+      
+      {/* Lado Esquerdo - Branding Imersivo (Oculto em telas pequenas) */}
+      <div className="hidden lg:flex w-1/2 bg-[#0B1511] relative overflow-hidden flex-col items-center justify-center border-r border-[#1A332A]">
+        {/* Efeitos de Luz no Fundo */}
+        <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_50%_50%,_#1A332A_0%,_transparent_60%)] opacity-40"></div>
+        <div className="absolute -top-32 -right-32 w-[30rem] h-[30rem] bg-[#4ade80]/10 rounded-full blur-[100px]"></div>
+        <div className="absolute -bottom-32 -left-32 w-[30rem] h-[30rem] bg-[#4ade80]/5 rounded-full blur-[100px]"></div>
+
+        <div className="relative z-10 text-center px-12 animate-fadeUp">
+          <div className="inline-flex items-center justify-center w-24 h-24 rounded-[2rem] bg-[#11211C] border border-[#1A332A] shadow-2xl mb-8 group">
+            <HeartHandshake className="w-12 h-12 text-[#4ade80] group-hover:scale-110 transition-transform duration-500" strokeWidth={1.5} />
           </div>
-          <h1 className="text-[#e8f0ec] text-2xl font-semibold tracking-tight" style={{fontFamily:'Georgia, serif'}}>EloSocial</h1>
-          <p className="text-[#5a8a72] text-sm mt-1 font-light">Conectando cidadãos e assistentes sociais</p>
-        </div>
-
-        <form onSubmit={lidarComLogin} className="bg-[#111f1a] border border-[#1e3b2e] rounded-2xl p-8 shadow-2xl">
-          <h2 className="text-[#d4ebe0] text-xl mb-1" style={{fontFamily:'Georgia, serif'}}>Bem-vindo</h2>
-          <p className="text-[#4a7a60] text-sm mb-7 font-light">Entre com sua conta para continuar</p>
-
-          <div className="mb-4">
-            <label className="block text-[#5a8a72] text-xs uppercase tracking-wider mb-2 font-medium">E-mail</label>
-            <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="seu@email.com" className="w-full bg-[#0d1f1a] border border-[#1e3b2e] rounded-xl px-4 py-3 text-[#c8e0d4] text-sm outline-none focus:border-[#2a9162]" />
-          </div>
-
-          <div className="mb-6">
-            <label className="block text-[#5a8a72] text-xs uppercase tracking-wider mb-2 font-medium">Senha</label>
-            <input type="password" required value={senha} onChange={(e) => setSenha(e.target.value)} placeholder="••••••••" className="w-full bg-[#0d1f1a] border border-[#1e3b2e] rounded-xl px-4 py-3 text-[#c8e0d4] text-sm outline-none focus:border-[#2a9162]" />
-          </div>
-
-          <button type="submit" disabled={carregando} className="w-full bg-[#1e7a52] hover:bg-[#22905f] text-[#e8f5ee] py-3 rounded-xl text-sm font-medium transition-all">
-            {carregando ? 'Verificando...' : 'Entrar'}
-          </button>
-
-          <div className="flex items-center gap-3 my-5 text-[#2a4a3a] text-xs">
-            <span className="flex-1 h-px bg-[#1a3330]"/>ou<span className="flex-1 h-px bg-[#1a3330]"/>
-          </div>
-
-          <p className="text-center text-[#4a7a60] text-sm">
-            Não tem conta? <a href="/cadastro" className="text-[#4ab882] font-medium hover:underline">Cadastre-se</a>
+          <h1 className="text-4xl xl:text-5xl font-bold text-white tracking-tight mb-6">
+            Plataforma EloSocial
+          </h1>
+          <p className="text-[#7A9C8D] text-lg xl:text-xl max-w-md mx-auto leading-relaxed font-medium">
+            Conectando quem precisa de acolhimento aos profissionais que fazem a diferença.
           </p>
-        </form>
+
+          <div className="mt-12 flex items-center justify-center gap-2 text-[#4A6B5C] text-sm font-semibold">
+            <ShieldCheck size={18} />
+            <span>Ambiente seguro e criptografado</span>
+          </div>
+        </div>
       </div>
+
+      {/* Lado Direito - Formulário de Login */}
+      <div className="w-full lg:w-1/2 flex items-center justify-center px-6 sm:px-12 lg:px-24 py-12">
+        <div className="w-full max-w-md animate-fadeUp" style={{ animationDelay: '0.1s' }}>
+          
+          {/* Cabeçalho Mobile (Só aparece se a tela for pequena) */}
+          <div className="lg:hidden text-center mb-10">
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-[#11211C] border border-[#1A332A] shadow-lg mb-4">
+              <HeartHandshake className="w-8 h-8 text-[#4ade80]" strokeWidth={1.5} />
+            </div>
+            <h1 className="text-2xl font-bold text-white tracking-tight">EloSocial</h1>
+          </div>
+
+          <div className="mb-10">
+            <h2 className="text-3xl sm:text-4xl font-bold text-white tracking-tight mb-3">
+              Bem-vindo(a)
+            </h2>
+            <p className="text-[#7A9C8D] text-base">
+              Acesse sua conta para continuar o atendimento.
+            </p>
+          </div>
+
+          <form onSubmit={lidarComLogin} className="space-y-6">
+            
+            <div className="space-y-2">
+              <label className="block text-[#A0BDB0] text-sm font-bold ml-1">
+                E-mail
+              </label>
+              <div className="relative group">
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                  <Mail className="h-5 w-5 text-[#4A6B5C] group-focus-within:text-[#4ade80] transition-colors" />
+                </div>
+                <input 
+                  type="email" 
+                  required 
+                  value={email} 
+                  onChange={(e) => setEmail(e.target.value)} 
+                  className="w-full bg-[#11211C] border border-[#1A332A] rounded-2xl pl-12 pr-4 py-4 text-base text-[#E2E8F0] outline-none focus:border-[#4ade80]/50 focus:ring-1 focus:ring-[#4ade80]/50 transition-all shadow-sm" 
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="block text-[#A0BDB0] text-sm font-bold ml-1">
+                Senha
+              </label>
+              <div className="relative group">
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                  <Lock className="h-5 w-5 text-[#4A6B5C] group-focus-within:text-[#4ade80] transition-colors" />
+                </div>
+                <input 
+                  type="password" 
+                  required 
+                  value={senha} 
+                  onChange={(e) => setSenha(e.target.value)} 
+                  className="w-full bg-[#11211C] border border-[#1A332A] rounded-2xl pl-12 pr-4 py-4 text-base text-[#E2E8F0] outline-none focus:border-[#4ade80]/50 focus:ring-1 focus:ring-[#4ade80]/50 transition-all shadow-sm" 
+                />
+              </div>
+            </div>
+
+            <div className="pt-4">
+              <button 
+                type="submit" 
+                disabled={carregando} 
+                className="w-full flex items-center justify-center gap-2 bg-[#4ade80] hover:bg-[#22c55e] disabled:bg-[#1A332A] disabled:text-[#4A6B5C] text-[#0B1511] py-4 rounded-2xl text-base font-bold transition-all shadow-[0_0_20px_rgba(74,222,128,0.15)] hover:shadow-[0_0_30px_rgba(74,222,128,0.25)] disabled:shadow-none group"
+              >
+                {carregando ? (
+                  <>
+                    <Loader2 size={20} className="animate-spin" />
+                    Autenticando...
+                  </>
+                ) : (
+                  <>
+                    Entrar na plataforma
+                    <ArrowRight size={20} className="group-hover:translate-x-1.5 transition-transform" />
+                  </>
+                )}
+              </button>
+            </div>
+
+            <div className="mt-8 text-center pt-6 border-t border-[#1A332A]">
+              <p className="text-[#7A9C8D] text-sm font-medium">
+                Primeiro acesso?{' '}
+                <Link to="/cadastro" className="text-[#4ade80] font-bold hover:text-[#22c55e] transition-colors">
+                  Crie sua conta aqui
+                </Link>
+              </p>
+            </div>
+
+          </form>
+        </div>
+      </div>
+
     </div>
   )
 }

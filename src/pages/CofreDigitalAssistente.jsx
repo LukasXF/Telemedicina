@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
 import DocumentosCaso from '../components/DocumentosCaso'
+import { Lock, ChevronLeft, User } from 'lucide-react'
 
 export default function CofreDigitalAssistente() {
   const navigate = useNavigate()
@@ -49,46 +50,56 @@ export default function CofreDigitalAssistente() {
 
   if (carregando) {
     return (
-      <div className="min-h-screen bg-[#0d1f1a] flex items-center justify-center px-6 py-10 font-sans">
-        <div className="text-center animate-fadeUp">
-          <div className="w-12 h-12 border-2 border-[#2a6b52] border-t-[#4ab882] rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-[#5a8a72] text-sm">Carregando cofre digital...</p>
+      <div className="min-h-screen bg-[#0B1511] flex items-center justify-center font-sans">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-10 h-10 border-2 border-[#1A332A] border-t-[#4ade80] rounded-full animate-spin"></div>
+          <p className="text-[#7A9C8D] text-sm font-medium tracking-wide">Desbloqueando cofre digital...</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-[#0d1f1a] px-6 py-10 font-sans">
-      <div className="max-w-5xl mx-auto animate-fadeUp">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
-          <div>
-            <p className="text-[#4ab882] text-xs uppercase tracking-wider font-medium mb-2">
-              EloSocial
-            </p>
-
-            <h1 className="text-[#e8f0ec] text-2xl font-semibold" style={{fontFamily:'Georgia, serif'}}>
-              Cofre Digital do Caso
-            </h1>
-
-            <p className="text-[#5a8a72] text-sm mt-1">
-              Documentos enviados por {caso?.paciente_nome || 'cidadão não identificado'} e pela equipe.
-            </p>
+    <div className="min-h-screen bg-[#0B1511] text-slate-200 font-sans selection:bg-[#4ade80]/30 flex flex-col">
+      
+      {/* Header Fixo e Minimalista */}
+      <header className="sticky top-0 z-10 bg-[#0B1511]/80 backdrop-blur-md border-b border-[#1A332A] px-6 py-4">
+        <div className="max-w-5xl mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => navigate('/consulta-medica', { state: { idTriagem: caso?.id } })}
+              className="p-2 -ml-2 rounded-xl text-[#7A9C8D] hover:text-white hover:bg-[#11211C] transition-colors"
+              title="Voltar ao caso"
+            >
+              <ChevronLeft size={20} />
+            </button>
+            <div>
+              <p className="text-[#4ade80] text-[10px] uppercase tracking-widest font-bold mb-0.5 flex items-center gap-1.5">
+                <Lock size={12} />
+                Cofre Digital
+              </p>
+              <h1 className="text-xl font-bold tracking-tight text-white">
+                {caso?.paciente_nome || 'Cidadão não identificado'}
+              </h1>
+            </div>
           </div>
 
-          <button
-            onClick={() => navigate('/consulta-medica', { state: { idTriagem: caso?.id } })}
-            className="border border-[#2a6b52] text-[#4ab882] px-4 py-2 rounded-xl text-xs hover:bg-[#1a3d30] transition-all"
-          >
-            Voltar ao caso
-          </button>
+          <div className="flex items-center gap-2 bg-[#11211C] border border-[#1A332A] px-3 py-1.5 rounded-full shadow-sm">
+            <User size={14} className="text-[#7A9C8D]" />
+            <span className="text-xs font-medium text-[#A0BDB0]">Assistente Social</span>
+          </div>
         </div>
+      </header>
 
-        <DocumentosCaso
-          casoId={caso?.id}
-          enviadoPorTipo="assistente"
-        />
-      </div>
+      {/* Main Content */}
+      <main className="flex-1 max-w-5xl w-full mx-auto p-4 md:p-6 flex flex-col">
+        <div className="bg-[#11211C] border border-[#1A332A] rounded-3xl p-6 md:p-8 shadow-xl flex-1">
+          <DocumentosCaso
+            casoId={caso?.id}
+            enviadoPorTipo="assistente"
+          />
+        </div>
+      </main>
     </div>
   )
 }

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
 import MensagensCaso from '../components/MensagensCaso'
+import { MessageSquare, ChevronLeft, User } from 'lucide-react'
 
 export default function MensagensAssistente() {
   const navigate = useNavigate()
@@ -49,47 +50,59 @@ export default function MensagensAssistente() {
 
   if (carregando) {
     return (
-      <div className="min-h-screen bg-[#0d1f1a] flex items-center justify-center px-6 py-10 font-sans">
-        <div className="text-center animate-fadeUp">
-          <div className="w-12 h-12 border-2 border-[#2a6b52] border-t-[#4ab882] rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-[#5a8a72] text-sm">Carregando mensagens do caso...</p>
+      <div className="h-screen bg-[#0B1511] flex items-center justify-center font-sans">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-10 h-10 border-2 border-[#1A332A] border-t-[#4ade80] rounded-full animate-spin"></div>
+          <p className="text-[#7A9C8D] text-sm font-medium tracking-wide">Carregando mensagens...</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-[#0d1f1a] px-6 py-10 font-sans">
-      <div className="max-w-4xl mx-auto animate-fadeUp">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
-          <div>
-            <p className="text-[#4ab882] text-xs uppercase tracking-wider font-medium mb-2">
-              EloSocial
-            </p>
-
-            <h1 className="text-[#e8f0ec] text-2xl font-semibold" style={{fontFamily:'Georgia, serif'}}>
-              Mensagens do Caso
-            </h1>
-
-            <p className="text-[#5a8a72] text-sm mt-1">
-              Conversa com {caso?.paciente_nome || 'cidadão não identificado'}.
-            </p>
+    <div className="h-screen bg-[#0B1511] text-slate-200 font-sans selection:bg-[#4ade80]/30 flex flex-col overflow-hidden">
+      
+      {/* Header Fixo e Minimalista */}
+      <header className="shrink-0 bg-[#0B1511]/80 backdrop-blur-md border-b border-[#1A332A] px-6 py-4 z-10">
+        <div className="max-w-4xl mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => navigate('/consulta-medica', { state: { idTriagem: caso?.id } })}
+              className="p-2 -ml-2 rounded-xl text-[#7A9C8D] hover:text-white hover:bg-[#11211C] transition-colors"
+              title="Voltar ao caso"
+            >
+              <ChevronLeft size={20} />
+            </button>
+            <div>
+              <p className="text-[#4ade80] text-[10px] uppercase tracking-widest font-bold mb-0.5 flex items-center gap-1.5">
+                <MessageSquare size={12} />
+                Central de Mensagens
+              </p>
+              <h1 className="text-xl font-bold tracking-tight text-white">
+                {caso?.paciente_nome || 'Cidadão não identificado'}
+              </h1>
+            </div>
           </div>
 
-          <button
-            onClick={() => navigate('/consulta-medica', { state: { idTriagem: caso?.id } })}
-            className="border border-[#2a6b52] text-[#4ab882] px-4 py-2 rounded-xl text-xs hover:bg-[#1a3d30] transition-all"
-          >
-            Voltar ao caso
-          </button>
+          <div className="flex items-center gap-2 bg-[#11211C] border border-[#1A332A] px-3 py-1.5 rounded-full shadow-sm">
+            <User size={14} className="text-[#7A9C8D]" />
+            <span className="text-xs font-medium text-[#A0BDB0]">Assistente Social</span>
+          </div>
         </div>
+      </header>
 
-        <MensagensCaso
-          casoId={caso?.id}
-          remetenteTipo="assistente"
-          remetenteNome="Assistente Social"
-        />
-      </div>
+      {/* Main agora trava a rolagem externa e passa todo o espaço para o chat */}
+      <main className="flex-1 max-w-4xl w-full mx-auto p-4 md:p-6 flex flex-col relative">
+        <div className="absolute inset-4 md:inset-6 bg-[#11211C] border border-[#1A332A] rounded-3xl overflow-hidden shadow-xl flex flex-col">
+          <div className="flex-1 flex flex-col h-full w-full">
+            <MensagensCaso
+              casoId={caso?.id}
+              remetenteTipo="assistente"
+              remetenteNome="Assistente Social"
+            />
+          </div>
+        </div>
+      </main>
     </div>
   )
 }

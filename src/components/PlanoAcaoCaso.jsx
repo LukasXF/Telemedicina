@@ -1,5 +1,10 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../supabaseClient'
+import { 
+  Plus, Calendar, User, Clock, 
+  PlayCircle, CheckCircle, Trash2, 
+  ListTodo, Loader2, AlignLeft
+} from 'lucide-react'
 
 export default function PlanoAcaoCaso({ casoId, modo }) {
   const [itens, setItens] = useState([])
@@ -72,7 +77,7 @@ export default function PlanoAcaoCaso({ casoId, modo }) {
     const tituloLimpo = titulo.trim()
 
     if (!tituloLimpo) {
-      alert('Digite um título para a tarefa.')
+      alert('O título é obrigatório.')
       return
     }
 
@@ -81,7 +86,7 @@ export default function PlanoAcaoCaso({ casoId, modo }) {
     const { data: { user } } = await supabase.auth.getUser()
 
     if (!user) {
-      alert('Você precisa estar logado.')
+      alert('Sessão inválida.')
       setSalvando(false)
       return
     }
@@ -124,12 +129,12 @@ export default function PlanoAcaoCaso({ casoId, modo }) {
       .eq('id', item.id)
 
     if (error) {
-      alert('Erro ao atualizar tarefa: ' + error.message)
+      alert('Erro ao atualizar status: ' + error.message)
     }
   }
 
   const excluirItem = async (item) => {
-    const confirmar = window.confirm('Deseja excluir esta tarefa do plano de ação?')
+    const confirmar = window.confirm('Confirmar exclusão desta tarefa?')
 
     if (!confirmar) return
 
@@ -139,13 +144,12 @@ export default function PlanoAcaoCaso({ casoId, modo }) {
       .eq('id', item.id)
 
     if (error) {
-      alert('Erro ao excluir tarefa: ' + error.message)
+      alert('Erro ao excluir: ' + error.message)
     }
   }
 
   const formatarPrazo = (data) => {
-    if (!data) return 'Sem prazo definido'
-
+    if (!data) return 'Não definido'
     return new Date(data + 'T00:00:00').toLocaleDateString('pt-BR')
   }
 
@@ -153,181 +157,196 @@ export default function PlanoAcaoCaso({ casoId, modo }) {
     if (status === 'pendente') return 'Pendente'
     if (status === 'em_andamento') return 'Em andamento'
     if (status === 'concluido') return 'Concluído'
-    return 'Não informado'
+    return 'Indefinido'
   }
 
   const obterClasseStatus = (status) => {
-    if (status === 'pendente') return 'bg-yellow-500/20 text-yellow-300 border-yellow-600/40'
-    if (status === 'em_andamento') return 'bg-blue-500/20 text-blue-300 border-blue-600/40'
-    if (status === 'concluido') return 'bg-[#4ab882]/20 text-[#4ab882] border-[#2a6b52]'
-    return 'bg-gray-500/20 text-gray-300 border-gray-600/40'
+    if (status === 'pendente') return 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20'
+    if (status === 'em_andamento') return 'bg-blue-500/10 text-blue-400 border-blue-500/20'
+    if (status === 'concluido') return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+    return 'bg-slate-500/10 text-slate-400 border-slate-500/20'
   }
 
   const obterTextoResponsavel = (valor) => {
     if (valor === 'cidadao') return 'Cidadão'
-    if (valor === 'assistente') return 'Assistente social'
-    if (valor === 'ambos') return 'Ambos'
-    return 'Não informado'
+    if (valor === 'assistente') return 'Assistente Social'
+    if (valor === 'ambos') return 'Equipe Conjunta'
+    return 'Indefinido'
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8 h-full flex flex-col">
+      
       {podeCriar && (
-        <form onSubmit={criarItem} className="bg-[#111f1a] border border-[#1e3b2e] rounded-3xl p-6">
-          <h3 className="text-[#4ab882] text-xs font-bold uppercase tracking-widest mb-4">
-            Nova tarefa
-          </h3>
-
+        <form onSubmit={criarItem} className="bg-[#0B1511] border border-[#1A332A] rounded-2xl p-5 md:p-6 shadow-sm shrink-0">
           <div className="space-y-4">
             <div>
-              <label className="block text-[#5a8a72] text-xs uppercase tracking-wider mb-2">
+              <label className="block text-[#7A9C8D] text-xs font-semibold uppercase tracking-wider mb-2">
                 Título
               </label>
               <input
                 value={titulo}
                 onChange={(e) => setTitulo(e.target.value)}
-                placeholder="Ex: Separar RG e CPF"
-                className="w-full bg-[#0d1f1a] border border-[#1e3b2e] rounded-xl px-4 py-3 text-[#c8e0d4] text-sm outline-none focus:border-[#2a9162]"
+                className="w-full bg-[#11211C] border border-[#1A332A] rounded-xl px-4 py-3 text-sm text-[#E2E8F0] outline-none focus:border-[#4ade80]/50 focus:ring-1 focus:ring-[#4ade80]/50 transition-all"
               />
             </div>
 
             <div>
-              <label className="block text-[#5a8a72] text-xs uppercase tracking-wider mb-2">
+              <label className="block text-[#7A9C8D] text-xs font-semibold uppercase tracking-wider mb-2">
                 Descrição
               </label>
               <textarea
                 value={descricao}
                 onChange={(e) => setDescricao(e.target.value)}
-                rows="3"
-                placeholder="Detalhe a orientação ou próximo passo."
-                className="w-full bg-[#0d1f1a] border border-[#1e3b2e] rounded-xl px-4 py-3 text-[#c8e0d4] text-sm outline-none focus:border-[#2a9162] resize-none"
+                rows="2"
+                className="w-full bg-[#11211C] border border-[#1A332A] rounded-xl px-4 py-3 text-sm text-[#E2E8F0] outline-none focus:border-[#4ade80]/50 focus:ring-1 focus:ring-[#4ade80]/50 resize-none transition-all"
               ></textarea>
             </div>
 
             <div className="grid md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-[#5a8a72] text-xs uppercase tracking-wider mb-2">
+                <label className="block text-[#7A9C8D] text-xs font-semibold uppercase tracking-wider mb-2">
                   Responsável
                 </label>
                 <select
                   value={responsavel}
                   onChange={(e) => setResponsavel(e.target.value)}
-                  className="w-full bg-[#0d1f1a] border border-[#1e3b2e] rounded-xl px-4 py-3 text-[#c8e0d4] text-sm outline-none focus:border-[#2a9162]"
+                  className="w-full bg-[#11211C] border border-[#1A332A] rounded-xl px-4 py-3 text-sm text-[#E2E8F0] outline-none focus:border-[#4ade80]/50 focus:ring-1 focus:ring-[#4ade80]/50 transition-all appearance-none"
                 >
                   <option value="cidadao">Cidadão</option>
-                  <option value="assistente">Assistente social</option>
-                  <option value="ambos">Ambos</option>
+                  <option value="assistente">Assistente Social</option>
+                  <option value="ambos">Equipe Conjunta</option>
                 </select>
               </div>
 
               <div>
-                <label className="block text-[#5a8a72] text-xs uppercase tracking-wider mb-2">
+                <label className="block text-[#7A9C8D] text-xs font-semibold uppercase tracking-wider mb-2">
                   Prazo
                 </label>
                 <input
                   type="date"
                   value={prazo}
                   onChange={(e) => setPrazo(e.target.value)}
-                  className="w-full bg-[#0d1f1a] border border-[#1e3b2e] rounded-xl px-4 py-3 text-[#c8e0d4] text-sm outline-none focus:border-[#2a9162]"
+                  className="w-full bg-[#11211C] border border-[#1A332A] rounded-xl px-4 py-3 text-sm text-[#E2E8F0] outline-none focus:border-[#4ade80]/50 focus:ring-1 focus:ring-[#4ade80]/50 transition-all [color-scheme:dark]"
                 />
               </div>
             </div>
 
-            <button
-              type="submit"
-              disabled={salvando || !titulo.trim()}
-              className="w-full bg-[#1e7a52] hover:bg-[#22905f] disabled:bg-[#1a3330] disabled:text-[#4a7a60] text-[#e8f5ee] py-3 rounded-xl text-sm font-medium transition-all"
-            >
-              {salvando ? 'Criando tarefa...' : 'Adicionar ao plano de ação'}
-            </button>
+            <div className="pt-2">
+              <button
+                type="submit"
+                disabled={salvando || !titulo.trim()}
+                className="w-full flex items-center justify-center gap-2 bg-[#4ade80] hover:bg-[#22c55e] disabled:bg-[#1A332A] disabled:text-[#4A6B5C] text-[#0B1511] py-3 rounded-xl text-sm font-bold transition-all disabled:shadow-none"
+              >
+                {salvando ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
+                {salvando ? 'Processando...' : 'Registrar Tarefa'}
+              </button>
+            </div>
           </div>
         </form>
       )}
 
-      <div className="bg-[#111f1a] border border-[#1e3b2e] rounded-3xl p-6">
-        <h3 className="text-[#4ab882] text-xs font-bold uppercase tracking-widest mb-4">
-          Tarefas do plano
-        </h3>
-
-        {carregando && (
-          <p className="text-[#5a8a72] text-sm text-center py-10">
-            Carregando plano de ação...
-          </p>
-        )}
-
-        {!carregando && itens.length === 0 && (
-          <div className="text-center py-10">
-            <p className="text-[#c8e0d4] text-sm font-medium mb-1">
-              Nenhuma tarefa registrada ainda
-            </p>
-            <p className="text-[#5a8a72] text-xs">
-              {podeCriar
-                ? 'Crie a primeira tarefa para orientar o acompanhamento.'
-                : 'Quando a equipe criar tarefas, elas aparecerão aqui.'}
-            </p>
+      <div className="flex-1 flex flex-col min-h-0">
+        <div className="flex items-center justify-between mb-4 shrink-0">
+          <div className="flex items-center gap-2">
+            <ListTodo size={18} className="text-[#7A9C8D]" />
+            <h3 className="text-[#A0BDB0] text-sm font-bold uppercase tracking-widest">
+              Tarefas
+            </h3>
           </div>
-        )}
+          <span className="bg-[#1A332A] text-[#4ade80] px-2.5 py-0.5 rounded-full text-xs font-bold">
+            {itens.length}
+          </span>
+        </div>
 
-        {!carregando && itens.length > 0 && (
-          <div className="space-y-4">
+        {carregando ? (
+          <div className="flex flex-col items-center justify-center py-12 gap-3">
+            <Loader2 className="animate-spin text-[#4ade80]" size={28} />
+          </div>
+        ) : itens.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-16 bg-[#0B1511] border border-dashed border-[#1A332A] rounded-2xl">
+            <p className="text-[#7A9C8D] text-sm font-medium">Nenhum registro encontrado.</p>
+          </div>
+        ) : (
+          <div className="space-y-3 overflow-y-auto pr-1 custom-scrollbar">
             {itens.map((item) => (
-              <div key={item.id} className="bg-[#0d1f1a] border border-[#1e3b2e] rounded-2xl p-4">
-                <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3 mb-3">
-                  <div>
-                    <h4 className="text-[#e8f0ec] text-sm font-semibold">
-                      {item.titulo}
-                    </h4>
-
-                    {item.descricao && (
-                      <p className="text-[#5a8a72] text-sm leading-relaxed mt-2">
-                        {item.descricao}
-                      </p>
-                    )}
-                  </div>
-
-                  <span className={`inline-block border px-2 py-1 rounded-md text-[10px] font-bold w-fit ${obterClasseStatus(item.status)}`}>
+              <div 
+                key={item.id} 
+                className="bg-[#0B1511] border border-[#1A332A] rounded-2xl p-5 hover:border-[#24473B] transition-all group"
+              >
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 mb-4">
+                  <h4 className="text-[#E2E8F0] text-base font-bold leading-tight">
+                    {item.titulo}
+                  </h4>
+                  <span className={`shrink-0 inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold border tracking-wide uppercase ${obterClasseStatus(item.status)}`}>
                     {obterTextoStatus(item.status)}
                   </span>
                 </div>
 
-                <div className="grid md:grid-cols-2 gap-2 mb-4">
-                  <p className="text-[#5a8a72] text-xs">
-                    <span className="text-[#c8e0d4]">Responsável:</span> {obterTextoResponsavel(item.responsavel)}
-                  </p>
+                {item.descricao && (
+                  <div className="flex items-start gap-2 mb-4 bg-[#11211C] p-3 rounded-xl border border-[#1A332A]">
+                    <AlignLeft size={14} className="text-[#4A6B5C] shrink-0 mt-0.5" />
+                    <p className="text-[#A0BDB0] text-sm leading-relaxed">
+                      {item.descricao}
+                    </p>
+                  </div>
+                )}
 
-                  <p className="text-[#5a8a72] text-xs">
-                    <span className="text-[#c8e0d4]">Prazo:</span> {formatarPrazo(item.prazo)}
-                  </p>
+                <div className="flex flex-wrap gap-4 mb-5">
+                  <div className="flex items-center gap-1.5 text-[#7A9C8D]">
+                    <User size={14} />
+                    <p className="text-xs font-medium">
+                      <span className="text-[#E2E8F0]">{obterTextoResponsavel(item.responsavel)}</span>
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-[#7A9C8D]">
+                    <Calendar size={14} />
+                    <p className="text-xs font-medium">
+                      <span className="text-[#E2E8F0]">{formatarPrazo(item.prazo)}</span>
+                    </p>
+                  </div>
                 </div>
 
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap items-center gap-2 pt-4 border-t border-[#1A332A]">
                   <button
                     onClick={() => atualizarStatus(item, 'pendente')}
-                    className="border border-[#1e3b2e] text-[#5a8a72] px-3 py-2 rounded-lg text-xs hover:border-yellow-600/40 hover:text-yellow-300 transition-all"
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                      item.status === 'pendente' 
+                        ? 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 pointer-events-none' 
+                        : 'text-[#7A9C8D] hover:bg-[#11211C] hover:text-white border border-transparent'
+                    }`}
                   >
-                    Pendente
+                    <Clock size={14} /> Pendente
                   </button>
 
                   <button
                     onClick={() => atualizarStatus(item, 'em_andamento')}
-                    className="border border-[#1e3b2e] text-[#5a8a72] px-3 py-2 rounded-lg text-xs hover:border-blue-600/40 hover:text-blue-300 transition-all"
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                      item.status === 'em_andamento' 
+                        ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20 pointer-events-none' 
+                        : 'text-[#7A9C8D] hover:bg-[#11211C] hover:text-white border border-transparent'
+                    }`}
                   >
-                    Em andamento
+                    <PlayCircle size={14} /> Em Andamento
                   </button>
 
                   <button
                     onClick={() => atualizarStatus(item, 'concluido')}
-                    className="border border-[#1e3b2e] text-[#5a8a72] px-3 py-2 rounded-lg text-xs hover:border-[#2a6b52] hover:text-[#4ab882] transition-all"
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                      item.status === 'concluido' 
+                        ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 pointer-events-none' 
+                        : 'text-[#7A9C8D] hover:bg-[#11211C] hover:text-white border border-transparent'
+                    }`}
                   >
-                    Concluído
+                    <CheckCircle size={14} /> Concluído
                   </button>
 
                   {podeCriar && (
                     <button
                       onClick={() => excluirItem(item)}
-                      className="border border-red-900/60 text-red-400 px-3 py-2 rounded-lg text-xs hover:bg-red-900/20 transition-all ml-auto"
+                      className="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-red-400/70 hover:text-red-400 hover:bg-red-500/10 border border-transparent transition-all"
                     >
-                      Excluir
+                      <Trash2 size={14} /> <span className="hidden sm:inline">Excluir</span>
                     </button>
                   )}
                 </div>
@@ -336,6 +355,7 @@ export default function PlanoAcaoCaso({ casoId, modo }) {
           </div>
         )}
       </div>
+
     </div>
   )
 }
