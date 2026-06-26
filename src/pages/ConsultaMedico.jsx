@@ -18,6 +18,10 @@ import {
   Activity,
   LogOut,
   ChevronRight,
+  FileText,
+  Shield,
+  Home,
+  Clock,
 } from 'lucide-react'
 
 export default function ConsultaMedico() {
@@ -103,6 +107,13 @@ export default function ConsultaMedico() {
     }
   }
 
+  const abrirTeleconferencia = () => {
+    guardarCasoAtual()
+    navigate('/teleconferencia-assistente', {
+      state: { idTriagem: caso.id },
+    })
+  }
+
   const abrirMensagens = () => {
     guardarCasoAtual()
     navigate('/mensagens-assistente', { state: { idTriagem: caso.id } })
@@ -118,18 +129,6 @@ export default function ConsultaMedico() {
     navigate('/cofre-digital-assistente', { state: { idTriagem: caso.id } })
   }
 
-  const abrirTeleconferencia = () => {
-    sessionStorage.setItem('elosocial_caso_atual', caso.id)
-    navigate('/teleconferencia-assistente', {
-      state: { idTriagem: caso.id },
-    })
-  }
-
-  const formatarSituacoes = (situacoes) => {
-    if (Array.isArray(situacoes)) return situacoes.join(', ')
-    return situacoes || 'Não informado'
-  }
-
   const extrairCampoDoResumo = (texto, nomeCampo) => {
     if (!texto) return ''
 
@@ -137,7 +136,13 @@ export default function ConsultaMedico() {
       .split('\n')
       .find((item) => item.toLowerCase().startsWith(nomeCampo.toLowerCase()))
 
-    return linha ? linha.split(':').slice(1).join(':').trim() : ''
+    if (!linha) return ''
+
+    const valor = linha.split(':').slice(1).join(':').trim()
+
+    if (!valor || valor === 'Não informado') return ''
+
+    return valor
   }
 
   const extrairBlocoDoResumo = (texto, inicio, fim) => {
@@ -155,7 +160,15 @@ export default function ConsultaMedico() {
       : textoDepois.slice(0, indiceFim).trim()
   }
 
-  const obterDadosAcolhimento = (detalhes) => {
+  const obterPrimeiroItem = (lista) => {
+    if (Array.isArray(lista) && lista.length > 0) {
+      return lista[0]
+    }
+
+    return ''
+  }
+
+  const obterDadosAcolhimento = (detalhes, sintomas) => {
     const situacoesTexto = extrairBlocoDoResumo(
       detalhes,
       'Situações marcadas:',
@@ -169,21 +182,101 @@ export default function ConsultaMedico() {
       .filter((item) => item !== 'Nenhuma situação específica marcada')
 
     return {
-      demandaPrincipal: extrairCampoDoResumo(detalhes, 'Demanda principal'),
+      demandaPrincipal:
+        extrairCampoDoResumo(detalhes, 'Demanda principal') ||
+        obterPrimeiroItem(sintomas),
+
       urgencia: extrairCampoDoResumo(detalhes, 'Nível de urgência informado'),
+
       pontuacao: extrairCampoDoResumo(detalhes, 'Pontuação de risco social'),
+
       telefone: extrairCampoDoResumo(detalhes, 'Telefone para contato'),
-      endereco: extrairCampoDoResumo(detalhes, 'Endereço/bairro'),
+
+      idade: extrairCampoDoResumo(detalhes, 'Idade'),
+
       cartaoSus: extrairCampoDoResumo(detalhes, 'Cartão SUS/NIS'),
+
+      bairroLocalidade:
+        extrairCampoDoResumo(detalhes, 'Bairro/localidade') ||
+        extrairCampoDoResumo(detalhes, 'Endereço/bairro'),
+
+      pontoReferencia:
+        extrairCampoDoResumo(detalhes, 'Ponto de referência') ||
+        extrairCampoDoResumo(detalhes, 'Complemento/ponto de referência'),
+
+      territorioCras:
+        extrairCampoDoResumo(detalhes, 'Território/CRAS') ||
+        extrairCampoDoResumo(detalhes, 'Território/CRAS de referência'),
+
       composicaoFamiliar: extrairCampoDoResumo(detalhes, 'Composição familiar'),
-      rendaFamiliar: extrairCampoDoResumo(detalhes, 'Renda familiar aproximada'),
+
+      rendaFamiliar:
+        extrairCampoDoResumo(detalhes, 'Renda familiar') ||
+        extrairCampoDoResumo(detalhes, 'Renda familiar aproximada'),
+
+      beneficiosSociais: extrairCampoDoResumo(detalhes, 'Benefícios sociais'),
+
+      outrosBeneficios: extrairCampoDoResumo(detalhes, 'Outros benefícios'),
+
       situacoes,
+
       relato: extrairBlocoDoResumo(detalhes, 'Descrição do cidadão:'),
     }
   }
 
-  const CardAcolhimento = ({ titulo, valor, Icone }) => (
-    <div className="bg-[#11211C] border border-[#1A332A] rounded-2xl p-4 transition-all hover:border-[#24473B]">
+  const formatarUrgencia = (urgencia) => {
+    if (urgencia === 'alta') return 'Atenção imediata'
+    if (urgencia === 'media') return 'Retorno breve'
+    if (urgencia === 'baixa') return 'Pode aguardar'
+    return urgencia || 'Não informado'
+  }
+
+  const obterCorPrioridade = (prioridade) => {
+    if (prioridade === 'ALTA') return 'bg-red-500/10 text-red-400 border-red-500/20'
+    if (prioridade === 'MÉDIA') return 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20'
+    return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+  }
+
+  const obterStatusBadge = (status) => {
+    const config = {
+      pendente: {
+        texto: 'Pendente',
+        cor: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20',
+      },
+      em_atendimento: {
+        texto: 'Em atendimento',
+        cor: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
+      },
+      em_acompanhamento: {
+        texto: 'Em acompanhamento',
+        cor: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+      },
+      concluido: {
+        texto: 'Concluído',
+        cor: 'bg-slate-500/10 text-slate-400 border-slate-500/20',
+      },
+    }
+
+    const atual = config[status] || {
+      texto: 'Não informado',
+      cor: 'bg-slate-500/10 text-slate-400 border-slate-500/20',
+    }
+
+    return (
+      <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold border tracking-wide ${atual.cor}`}>
+        {atual.texto}
+      </span>
+    )
+  }
+
+  const CardAcolhimento = ({ titulo, valor, Icone, destaque }) => (
+    <div
+      className={`border rounded-2xl p-4 transition-all hover:border-[#24473B] ${
+        destaque
+          ? 'bg-[#0B1511] border-[#4ade80]/30'
+          : 'bg-[#11211C] border-[#1A332A]'
+      }`}
+    >
       <div className="flex items-center gap-2 mb-2">
         {Icone && <Icone size={14} className="text-[#4ade80] opacity-80" />}
         <p className="text-[#7A9C8D] text-[10px] font-semibold uppercase tracking-wider">
@@ -226,44 +319,6 @@ export default function ConsultaMedico() {
     </button>
   )
 
-  const obterCorPrioridade = (prioridade) => {
-    if (prioridade === 'ALTA') return 'bg-red-500/10 text-red-400 border-red-500/20'
-    if (prioridade === 'MÉDIA') return 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20'
-    return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-  }
-
-  const obterStatusBadge = (status) => {
-    const config = {
-      pendente: {
-        texto: 'Pendente',
-        cor: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20',
-      },
-      em_atendimento: {
-        texto: 'Em atendimento',
-        cor: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
-      },
-      em_acompanhamento: {
-        texto: 'Em acompanhamento',
-        cor: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
-      },
-      concluido: {
-        texto: 'Concluído',
-        cor: 'bg-slate-500/10 text-slate-400 border-slate-500/20',
-      },
-    }
-
-    const atual = config[status] || {
-      texto: 'Não informado',
-      cor: 'bg-slate-500/10 text-slate-400 border-slate-500/20',
-    }
-
-    return (
-      <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold border tracking-wide ${atual.cor}`}>
-        {atual.texto}
-      </span>
-    )
-  }
-
   if (carregando) {
     return (
       <div className="min-h-screen bg-[#0B1511] flex items-center justify-center font-sans">
@@ -277,8 +332,10 @@ export default function ConsultaMedico() {
     )
   }
 
-  const dadosAcolhimento = obterDadosAcolhimento(caso?.detalhes || '')
+  const dadosAcolhimento = obterDadosAcolhimento(caso?.detalhes || '', caso?.sintomas)
   const casoConcluido = caso?.status === 'concluido'
+  const urgenciaTecnica = dadosAcolhimento.urgencia || caso?.duracao
+  const pontuacaoRisco = dadosAcolhimento.pontuacao || 'Não informado'
 
   return (
     <div className="min-h-screen bg-[#0B1511] text-slate-200 font-sans selection:bg-[#4ade80]/30">
@@ -353,21 +410,45 @@ export default function ConsultaMedico() {
             <div className="space-y-8">
               <div>
                 <h3 className="text-[#7A9C8D] text-xs font-bold uppercase tracking-widest mb-4 flex items-center gap-2">
+                  <Activity size={14} className="text-[#4ade80]" />
+                  Classificação interna
+                </h3>
+
+                <div className="grid sm:grid-cols-3 gap-3">
+                  <CardAcolhimento
+                    titulo="Prioridade"
+                    valor={caso?.prioridade || 'BAIXA'}
+                    Icone={AlertTriangle}
+                    destaque
+                  />
+
+                  <CardAcolhimento
+                    titulo="Urgência informada"
+                    valor={formatarUrgencia(urgenciaTecnica)}
+                    Icone={Clock}
+                    destaque
+                  />
+
+                  <CardAcolhimento
+                    titulo="Pontuação social"
+                    valor={pontuacaoRisco}
+                    Icone={Activity}
+                    destaque
+                  />
+                </div>
+              </div>
+
+              <div>
+                <h3 className="text-[#7A9C8D] text-xs font-bold uppercase tracking-widest mb-4 flex items-center gap-2">
                   <User size={14} className="text-[#4ade80]" />
-                  Mapeamento de dados
+                  Identificação e contato
                 </h3>
 
                 <div className="grid sm:grid-cols-2 gap-3">
                   <CardAcolhimento
                     titulo="Demanda principal"
-                    valor={dadosAcolhimento.demandaPrincipal || formatarSituacoes(caso?.sintomas)}
-                    Icone={AlertTriangle}
-                  />
-
-                  <CardAcolhimento
-                    titulo="Urgência informada"
-                    valor={dadosAcolhimento.urgencia}
-                    Icone={Activity}
+                    valor={dadosAcolhimento.demandaPrincipal}
+                    Icone={Briefcase}
                   />
 
                   <CardAcolhimento
@@ -377,15 +458,57 @@ export default function ConsultaMedico() {
                   />
 
                   <CardAcolhimento
-                    titulo="Endereço / Bairro"
-                    valor={dadosAcolhimento.endereco}
+                    titulo="Idade"
+                    valor={dadosAcolhimento.idade}
+                    Icone={User}
+                  />
+
+                  <CardAcolhimento
+                    titulo="SUS / NIS"
+                    valor={dadosAcolhimento.cartaoSus}
+                    Icone={CreditCard}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <h3 className="text-[#7A9C8D] text-xs font-bold uppercase tracking-widest mb-4 flex items-center gap-2">
+                  <Home size={14} className="text-[#4ade80]" />
+                  Território e localização
+                </h3>
+
+                <div className="grid sm:grid-cols-2 gap-3">
+                  <CardAcolhimento
+                    titulo="Bairro / Localidade"
+                    valor={dadosAcolhimento.bairroLocalidade}
                     Icone={MapPin}
                   />
 
                   <CardAcolhimento
-                    titulo="Cartão SUS / NIS"
-                    valor={dadosAcolhimento.cartaoSus}
-                    Icone={CreditCard}
+                    titulo="Ponto de referência"
+                    valor={dadosAcolhimento.pontoReferencia}
+                    Icone={MapPin}
+                  />
+
+                  <CardAcolhimento
+                    titulo="Território / CRAS"
+                    valor={dadosAcolhimento.territorioCras}
+                    Icone={Shield}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <h3 className="text-[#7A9C8D] text-xs font-bold uppercase tracking-widest mb-4 flex items-center gap-2">
+                  <Users size={14} className="text-[#4ade80]" />
+                  Família, renda e benefícios
+                </h3>
+
+                <div className="grid sm:grid-cols-2 gap-3">
+                  <CardAcolhimento
+                    titulo="Composição familiar"
+                    valor={dadosAcolhimento.composicaoFamiliar}
+                    Icone={Users}
                   />
 
                   <CardAcolhimento
@@ -395,16 +518,18 @@ export default function ConsultaMedico() {
                   />
 
                   <CardAcolhimento
-                    titulo="Composição familiar"
-                    valor={dadosAcolhimento.composicaoFamiliar}
-                    Icone={Users}
+                    titulo="Benefícios sociais"
+                    valor={dadosAcolhimento.beneficiosSociais}
+                    Icone={Briefcase}
                   />
 
-                  <CardAcolhimento
-                    titulo="Risco social"
-                    valor={dadosAcolhimento.pontuacao}
-                    Icone={AlertTriangle}
-                  />
+                  {dadosAcolhimento.outrosBeneficios && (
+                    <CardAcolhimento
+                      titulo="Outros benefícios"
+                      valor={dadosAcolhimento.outrosBeneficios}
+                      Icone={FileText}
+                    />
+                  )}
                 </div>
               </div>
 

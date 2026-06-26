@@ -21,6 +21,8 @@ import {
   ChevronRight,
   FileText,
   RefreshCw,
+  Shield,
+  Home,
 } from 'lucide-react'
 
 export default function Acompanhamento() {
@@ -123,18 +125,6 @@ export default function Acompanhamento() {
     navigate('/')
   }
 
-  const formatarSituacoes = (situacoes) => {
-    if (Array.isArray(situacoes)) {
-      return situacoes.join(', ')
-    }
-
-    if (situacoes) {
-      return situacoes
-    }
-
-    return 'Não informado'
-  }
-
   const extrairCampoDoResumo = (texto, nomeCampo) => {
     if (!texto) return ''
 
@@ -142,7 +132,13 @@ export default function Acompanhamento() {
       .split('\n')
       .find((item) => item.toLowerCase().startsWith(nomeCampo.toLowerCase()))
 
-    return linha ? linha.split(':').slice(1).join(':').trim() : ''
+    if (!linha) return ''
+
+    const valor = linha.split(':').slice(1).join(':').trim()
+
+    if (!valor || valor === 'Não informado') return ''
+
+    return valor
   }
 
   const extrairBlocoDoResumo = (texto, inicio, fim) => {
@@ -160,7 +156,15 @@ export default function Acompanhamento() {
       : textoDepois.slice(0, indiceFim).trim()
   }
 
-  const obterDadosAcolhimento = (detalhes) => {
+  const obterPrimeiroItem = (lista) => {
+    if (Array.isArray(lista) && lista.length > 0) {
+      return lista[0]
+    }
+
+    return ''
+  }
+
+  const obterDadosAcolhimento = (detalhes, sintomas) => {
     const situacoesTexto = extrairBlocoDoResumo(
       detalhes,
       'Situações marcadas:',
@@ -174,15 +178,40 @@ export default function Acompanhamento() {
       .filter((item) => item !== 'Nenhuma situação específica marcada')
 
     return {
-      demandaPrincipal: extrairCampoDoResumo(detalhes, 'Demanda principal'),
-      urgencia: extrairCampoDoResumo(detalhes, 'Nível de urgência informado'),
-      pontuacao: extrairCampoDoResumo(detalhes, 'Pontuação de risco social'),
+      demandaPrincipal:
+        extrairCampoDoResumo(detalhes, 'Demanda principal') ||
+        obterPrimeiroItem(sintomas),
+
       telefone: extrairCampoDoResumo(detalhes, 'Telefone para contato'),
-      endereco: extrairCampoDoResumo(detalhes, 'Endereço/bairro'),
+
+      idade: extrairCampoDoResumo(detalhes, 'Idade'),
+
       cartaoSus: extrairCampoDoResumo(detalhes, 'Cartão SUS/NIS'),
+
+      bairroLocalidade:
+        extrairCampoDoResumo(detalhes, 'Bairro/localidade') ||
+        extrairCampoDoResumo(detalhes, 'Endereço/bairro'),
+
+      pontoReferencia:
+        extrairCampoDoResumo(detalhes, 'Ponto de referência') ||
+        extrairCampoDoResumo(detalhes, 'Complemento/ponto de referência'),
+
+      territorioCras:
+        extrairCampoDoResumo(detalhes, 'Território/CRAS') ||
+        extrairCampoDoResumo(detalhes, 'Território/CRAS de referência'),
+
       composicaoFamiliar: extrairCampoDoResumo(detalhes, 'Composição familiar'),
-      rendaFamiliar: extrairCampoDoResumo(detalhes, 'Renda familiar aproximada'),
+
+      rendaFamiliar:
+        extrairCampoDoResumo(detalhes, 'Renda familiar') ||
+        extrairCampoDoResumo(detalhes, 'Renda familiar aproximada'),
+
+      beneficiosSociais: extrairCampoDoResumo(detalhes, 'Benefícios sociais'),
+
+      outrosBeneficios: extrairCampoDoResumo(detalhes, 'Outros benefícios'),
+
       situacoes,
+
       relato: extrairBlocoDoResumo(detalhes, 'Descrição do cidadão:'),
     }
   }
@@ -221,12 +250,6 @@ export default function Acompanhamento() {
       cor: 'bg-slate-500/10 text-slate-400 border-slate-500/20',
       Icone: Clock,
     }
-  }
-
-  const obterCorPrioridade = (prioridade) => {
-    if (prioridade === 'ALTA') return 'bg-red-500/10 text-red-400 border-red-500/20'
-    if (prioridade === 'MÉDIA') return 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20'
-    return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
   }
 
   const CardAcolhimento = ({ titulo, valor, Icone }) => (
@@ -344,7 +367,7 @@ export default function Acompanhamento() {
     )
   }
 
-  const dadosAcolhimento = obterDadosAcolhimento(caso?.detalhes || '')
+  const dadosAcolhimento = obterDadosAcolhimento(caso?.detalhes || '', caso?.sintomas)
   const statusAtual = obterStatusConfig(caso?.status)
   const IconeStatus = statusAtual.Icone
   const casoConcluido = caso?.status === 'concluido'
@@ -386,10 +409,6 @@ export default function Acompanhamento() {
                 </h2>
 
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold border tracking-wide ${obterCorPrioridade(caso?.prioridade)}`}>
-                    Prioridade {caso?.prioridade || 'BAIXA'}
-                  </span>
-
                   <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold border tracking-wide ${statusAtual.cor}`}>
                     <IconeStatus size={10} />
                     {statusAtual.texto}
@@ -434,21 +453,15 @@ export default function Acompanhamento() {
             <div className="space-y-8">
               <div>
                 <h3 className="text-[#7A9C8D] text-xs font-bold uppercase tracking-widest mb-4 flex items-center gap-2">
-                  <User size={14} className="text-[#4ade80]" />
-                  Dados do acolhimento
+                  <FileText size={14} className="text-[#4ade80]" />
+                  Resumo do acolhimento
                 </h3>
 
                 <div className="grid sm:grid-cols-2 gap-3">
                   <CardAcolhimento
                     titulo="Demanda principal"
-                    valor={dadosAcolhimento.demandaPrincipal || formatarSituacoes(caso?.sintomas)}
-                    Icone={AlertTriangle}
-                  />
-
-                  <CardAcolhimento
-                    titulo="Urgência informada"
-                    valor={dadosAcolhimento.urgencia}
-                    Icone={Activity}
+                    valor={dadosAcolhimento.demandaPrincipal}
+                    Icone={Briefcase}
                   />
 
                   <CardAcolhimento
@@ -458,15 +471,57 @@ export default function Acompanhamento() {
                   />
 
                   <CardAcolhimento
-                    titulo="Endereço / Bairro"
-                    valor={dadosAcolhimento.endereco}
+                    titulo="Idade"
+                    valor={dadosAcolhimento.idade}
+                    Icone={User}
+                  />
+
+                  <CardAcolhimento
+                    titulo="SUS / NIS"
+                    valor={dadosAcolhimento.cartaoSus}
+                    Icone={CreditCard}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <h3 className="text-[#7A9C8D] text-xs font-bold uppercase tracking-widest mb-4 flex items-center gap-2">
+                  <Home size={14} className="text-[#4ade80]" />
+                  Território e localização
+                </h3>
+
+                <div className="grid sm:grid-cols-2 gap-3">
+                  <CardAcolhimento
+                    titulo="Bairro / Localidade"
+                    valor={dadosAcolhimento.bairroLocalidade}
                     Icone={MapPin}
                   />
 
                   <CardAcolhimento
-                    titulo="Cartão SUS / NIS"
-                    valor={dadosAcolhimento.cartaoSus}
-                    Icone={CreditCard}
+                    titulo="Ponto de referência"
+                    valor={dadosAcolhimento.pontoReferencia}
+                    Icone={MapPin}
+                  />
+
+                  <CardAcolhimento
+                    titulo="Território / CRAS"
+                    valor={dadosAcolhimento.territorioCras}
+                    Icone={Shield}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <h3 className="text-[#7A9C8D] text-xs font-bold uppercase tracking-widest mb-4 flex items-center gap-2">
+                  <Users size={14} className="text-[#4ade80]" />
+                  Família e renda
+                </h3>
+
+                <div className="grid sm:grid-cols-2 gap-3">
+                  <CardAcolhimento
+                    titulo="Composição familiar"
+                    valor={dadosAcolhimento.composicaoFamiliar}
+                    Icone={Users}
                   />
 
                   <CardAcolhimento
@@ -476,16 +531,18 @@ export default function Acompanhamento() {
                   />
 
                   <CardAcolhimento
-                    titulo="Composição familiar"
-                    valor={dadosAcolhimento.composicaoFamiliar}
-                    Icone={Users}
+                    titulo="Benefícios sociais"
+                    valor={dadosAcolhimento.beneficiosSociais}
+                    Icone={Briefcase}
                   />
 
-                  <CardAcolhimento
-                    titulo="Risco social"
-                    valor={dadosAcolhimento.pontuacao}
-                    Icone={AlertTriangle}
-                  />
+                  {dadosAcolhimento.outrosBeneficios && (
+                    <CardAcolhimento
+                      titulo="Outros benefícios"
+                      valor={dadosAcolhimento.outrosBeneficios}
+                      Icone={FileText}
+                    />
+                  )}
                 </div>
               </div>
 
